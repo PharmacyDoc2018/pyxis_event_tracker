@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
+	_ "github.com/microsoft/go-mssqldb"
 )
 
 func main() {
