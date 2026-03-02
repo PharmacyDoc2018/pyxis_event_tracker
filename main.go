@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -25,4 +26,17 @@ func main() {
 	}
 
 	fmt.Println("Connected!")
+
+	fmt.Println("Attempting to retrieve list of C2 medications from AUGUSTA2...")
+	q := New(db)
+	cTwoMedList, err := q.ListControlTwoMedsByDevice(context.Background(), "AUGUSTA2")
+	if err != nil {
+		fmt.Printf("Failed to retrieve C2 list from db: %s", err.Error())
+	} else {
+		fmt.Println("Medications found! Printing list:")
+	}
+
+	for _, med := range cTwoMedList {
+		fmt.Println(med)
+	}
 }

@@ -1,3 +1,4 @@
 pyxis_event_tracker
 .env
 build_for_windows.sh
+pyxis_event_tracker.exe
