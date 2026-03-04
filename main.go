@@ -1,24 +1,23 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
+	"github.com/PharmacyDoc2018/pyxis_event_tracker/config"
 	_ "github.com/microsoft/go-mssqldb"
 )
 
 func main() {
-	c := initConfig()
-	defer c.db.Close()
+	c := config.InitConfig()
+	defer c.Db.Close()
 
-	cTwoMedList, err := c.dbq.ListControlTwoMedsByDevice(context.Background(), "AUGUSTA2")
-	if err != nil {
-		fmt.Printf("Failed to retrieve C2 list from db: %s", err.Error())
-	} else {
-		fmt.Println("Medications found! Printing list:")
-	}
+	for {
+		line, err := c.Rl.Readline()
+		if err != nil {
+			break
+		}
 
-	for _, med := range cTwoMedList {
-		fmt.Println(med)
+		fmt.Println(line)
+		fmt.Println()
 	}
 }

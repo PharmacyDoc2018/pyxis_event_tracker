@@ -3,6 +3,7 @@ module github.com/PharmacyDoc2018/pyxis_event_tracker
 go 1.24.2
 
 require (
+	github.com/chzyer/readline v1.5.1
 	github.com/joho/godotenv v1.5.1
 	github.com/microsoft/go-mssqldb v1.9.7
 )
@@ -13,5 +14,6 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 )
