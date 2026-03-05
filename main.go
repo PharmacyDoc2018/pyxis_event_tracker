@@ -11,13 +11,21 @@ func main() {
 	c := cli.InitConfig()
 	defer c.Db.Close()
 
+	err := c.Db.Ping()
+	if err != nil {
+		fmt.Println("warning: no database connection")
+	}
+
 	for {
 		line, err := c.Rl.Readline()
 		if err != nil {
 			break
 		}
 
-		fmt.Println(line)
+		err = c.CommandExe(line)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
 		fmt.Println()
 	}
 }
