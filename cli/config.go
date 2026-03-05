@@ -1,11 +1,10 @@
-package config
+package cli
 
 import (
 	"database/sql"
 	"fmt"
 	"os"
 
-	"github.com/PharmacyDoc2018/pyxis_event_tracker/cli"
 	"github.com/PharmacyDoc2018/pyxis_event_tracker/database"
 	"github.com/chzyer/readline"
 	"github.com/joho/godotenv"
@@ -29,7 +28,7 @@ func InitConfig() *Config {
 	}
 	c.Dbq = database.New(db)
 
-	c.Rl = cli.InitReadline()
+	c.Rl = InitReadline()
 
 	return &c
 }

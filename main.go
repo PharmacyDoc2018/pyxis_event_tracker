@@ -3,12 +3,12 @@ package main
 import (
 	"fmt"
 
-	"github.com/PharmacyDoc2018/pyxis_event_tracker/config"
+	"github.com/PharmacyDoc2018/pyxis_event_tracker/cli"
 	_ "github.com/microsoft/go-mssqldb"
 )
 
 func main() {
-	c := config.InitConfig()
+	c := cli.InitConfig()
 	defer c.Db.Close()
 
 	for {
