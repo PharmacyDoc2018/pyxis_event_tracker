@@ -16,24 +16,23 @@ type Config struct {
 func InitConfig() *Config {
 	c := Config{}
 	c.Rl = InitReadline()
-	c.commands = getCommands()
+	c.commands = map[string]cliCommand{}
 
 	return &c
 }
 
 type CommandArg struct {
-	Name     string
-	Val      any
-	Required bool
+	Name string
+	Val  any
 }
 
 type cliCommand struct {
 	name     string
-	function func() error
+	function func([]CommandArg) error
 	args     []CommandArg
 }
 
-func (c *Config) AddCommand(name string, function func() error, args ...CommandArg) {
+func (c *Config) AddCommand(name string, function func([]CommandArg) error, args ...CommandArg) {
 	newCommand := cliCommand{
 		name:     name,
 		function: function,
@@ -66,6 +65,12 @@ func (c *Config) CommandExe(input string) error {
 	}
 
 	//-- add arg parsing function
+	args := c.parseInputForArgs()
+
+	err := cmd.function(args)
+	if err != nil {
+		return err
+	}
 
 	return nil
 
@@ -86,6 +91,27 @@ func (c *Config) parseInputForCommand() string {
 
 	return strings.Join(nonArgs, " ")
 
+}
+
+func (c *Config) parseInputForArgs() []CommandArg {
+	args := []string{}
+
+	for _, i := range c.lastInput {
+		if strings.Contains(i, "=") {
+			args = append(args, i)
+		}
+	}
+
+	commandArgs := []CommandArg{}
+	for _, arg := range args {
+		splitArg := strings.Split(arg, "=")
+		commandArgs = append(commandArgs, CommandArg{
+			Name: splitArg[0],
+			Val:  splitArg[1],
+		})
+	}
+
+	return commandArgs
 }
 
 func cleanInput(text string) []string {

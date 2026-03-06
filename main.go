@@ -23,6 +23,7 @@ func main() {
 	}
 
 	p.cliConfig = cli.InitConfig()
+	setupCommands(p.cliConfig)
 
 	for {
 		line, err := p.cliConfig.Rl.Readline()

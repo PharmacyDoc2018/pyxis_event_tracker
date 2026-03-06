@@ -11,7 +11,7 @@ func InitReadline() *readline.Instance {
 	)
 
 	rl, _ := readline.NewEx(&readline.Config{
-		Prompt:       " > ",
+		Prompt:       "> ",
 		AutoComplete: completer,
 	})
 
