@@ -1,70 +1,107 @@
 package cli
 
 import (
-	"database/sql"
 	"fmt"
-	"os"
+	"strings"
 
-	"github.com/PharmacyDoc2018/pyxis_event_tracker/database"
 	"github.com/chzyer/readline"
-	"github.com/joho/godotenv"
 )
 
 type Config struct {
 	lastInput []string
-	commands  map[string]CliCommand
-	Db        *sql.DB
-	Dbq       *database.Queries
+	commands  map[string]cliCommand
 	Rl        *readline.Instance
 }
 
 func InitConfig() *Config {
 	c := Config{}
-
-	godotenv.Load(".env")
-	connString := os.Getenv("CONNSTRING")
-
-	db, err := sql.Open("sqlserver", connString)
-	if err != nil {
-		fmt.Printf("Error creating connection pool: %s\n ", err.Error())
-	}
-	c.Db = db
-
-	c.Dbq = database.New(db)
-
 	c.Rl = InitReadline()
-
 	c.commands = getCommands()
 
 	return &c
 }
 
-func (c *Config) commandLookup(input string) (CliCommand, error) {
-	for _, command := range c.commands {
-		if input == command.Name {
-			return command, nil
-		}
+type CommandArg struct {
+	Name     string
+	Val      any
+	Required bool
+}
+
+type cliCommand struct {
+	name     string
+	function func() error
+	args     []CommandArg
+}
+
+func (c *Config) AddCommand(name string, function func() error, args ...CommandArg) {
+	newCommand := cliCommand{
+		name:     name,
+		function: function,
+		args:     args,
 	}
 
-	return CliCommand{}, fmt.Errorf("error. unknown command")
+	c.commands[name] = newCommand
+}
+
+func (c *Config) commandLookup(input string) (cliCommand, bool) {
+	cmd, ok := c.commands[input]
+	return cmd, ok
 }
 
 func (c *Config) CommandExe(input string) error {
 	cleanInputAndStore(c, input)
+
 	if len(c.lastInput) == 0 {
 		return nil
 	}
 
-	command, err := c.commandLookup(c.lastInput[0])
-	if err != nil {
-		return err
+	cmdKey := c.parseInputForCommand()
+	if cmdKey == "" {
+		return fmt.Errorf("error. no commands found")
 	}
 
-	err = command.Callback(c)
-	if err != nil {
-		return err
+	cmd, ok := c.commandLookup(cmdKey)
+	if !ok {
+		return fmt.Errorf("error. command %s not found", cmdKey)
 	}
+
+	//-- add arg parsing function
 
 	return nil
 
+}
+
+func (c *Config) parseInputForCommand() string {
+	nonArgs := []string{}
+
+	for _, i := range c.lastInput {
+		if !strings.Contains(i, "=") {
+			nonArgs = append(nonArgs, i)
+		}
+	}
+
+	if len(nonArgs) == 0 {
+		return ""
+	}
+
+	return strings.Join(nonArgs, " ")
+
+}
+
+func cleanInput(text string) []string {
+	var textWords []string
+	text = strings.TrimSpace(text)
+	firstPass := strings.Split(text, " ")
+
+	for _, word := range firstPass {
+		if word != "" {
+			textWords = append(textWords, word)
+		}
+	}
+
+	return textWords
+}
+
+func cleanInputAndStore(c *Config, input string) {
+	c.lastInput = cleanInput(input)
 }

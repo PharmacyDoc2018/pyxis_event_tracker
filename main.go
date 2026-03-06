@@ -8,21 +8,29 @@ import (
 )
 
 func main() {
-	c := cli.InitConfig()
-	defer c.Db.Close()
+	p := initProcess()
+	defer p.db.Close()
 
-	err := c.Db.Ping()
+	fmt.Println("Attempting to connect to database...")
+	err := p.db.Ping()
 	if err != nil {
+		p.dbConnection = false
+		fmt.Println("connection failed!")
 		fmt.Println("warning: no database connection")
+	} else {
+		p.dbConnection = true
+		fmt.Println("connection successful")
 	}
 
+	p.cliConfig = cli.InitConfig()
+
 	for {
-		line, err := c.Rl.Readline()
+		line, err := p.cliConfig.Rl.Readline()
 		if err != nil {
 			break
 		}
 
-		err = c.CommandExe(line)
+		err = p.cliConfig.CommandExe(line)
 		if err != nil {
 			fmt.Println(err.Error())
 		}

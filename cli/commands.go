@@ -3,48 +3,28 @@ package cli
 import (
 	"fmt"
 	"os"
-	"strings"
 )
 
-type CliCommand struct {
-	Name        string
-	Description string
-	Callback    func(*Config) error
-}
-
-func getCommands() map[string]CliCommand {
-	commands := map[string]CliCommand{
+func getCommands() map[string]cliCommand {
+	commands := map[string]cliCommand{
 		"hello": {
-			Name:        "hello",
-			Description: "greets the user",
-			Callback:    commandHello,
+			name:        "hello",
+			description: "greets the user",
+			callback:    commandHello,
 		},
 		"exit": {
-			Name:        "exit",
-			Description: "exits the program",
-			Callback:    commandExit,
+			name:        "exit",
+			description: "exits the program",
+			callback:    commandExit,
+		},
+		"add": {
+			name:        "add",
+			description: "adds element to tracker",
+			callback:    commandAdd,
 		},
 	}
 
 	return commands
-}
-
-func cleanInput(text string) []string {
-	var textWords []string
-	text = strings.TrimSpace(text)
-	firstPass := strings.Split(text, " ")
-
-	for _, word := range firstPass {
-		if word != "" {
-			textWords = append(textWords, word)
-		}
-	}
-
-	return textWords
-}
-
-func cleanInputAndStore(c *Config, input string) {
-	c.lastInput = cleanInput(input)
 }
 
 func commandHello(c *Config) error {
@@ -57,4 +37,19 @@ func commandExit(c *Config) error {
 	c.Rl.Close()
 	os.Exit(0)
 	return nil
+}
+
+func commandAdd(c *Config) error {
+	if len(c.lastInput) < 2 {
+		return fmt.Errorf("error. too few arguments")
+	}
+
+	firstArg := c.lastInput[1]
+	switch firstArg {
+	case "pyxis":
+		err := commandAddPyxis(c)
+		if err != nil {
+			return err
+		}
+	}
 }
