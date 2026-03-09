@@ -1,19 +1,17 @@
 package cli
 
-import "github.com/chzyer/readline"
+import (
+	"github.com/chzyer/readline"
+)
 
-func InitReadline() *readline.Instance {
+func InitReadline() (*readline.Instance, *readline.PrefixCompleter) {
 
-	completer := readline.NewPrefixCompleter(
-		readline.PcItem("hi"),
-		readline.PcItem("help"),
-		readline.PcItem("exit"),
-	)
+	completer := readline.NewPrefixCompleter()
 
 	rl, _ := readline.NewEx(&readline.Config{
 		Prompt:       "> ",
 		AutoComplete: completer,
 	})
 
-	return rl
+	return rl, completer
 }

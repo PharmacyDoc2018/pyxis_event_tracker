@@ -19,4 +19,20 @@ func setupCommands(c *cli.Config) {
 		os.Exit(0)
 		return nil
 	})
+
+	c.AddCommand("echo", func(args []cli.CommandArg) error {
+		if len(args) == 0 {
+			return fmt.Errorf("error. need phrase argument")
+		}
+
+		if len(args) > 1 {
+			return fmt.Errorf("error. too many arguments")
+		}
+
+		fmt.Println(args[0].Val)
+		return nil
+	}, cli.CommandArg{
+		Name: "phrase",
+	})
+
 }

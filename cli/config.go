@@ -8,14 +8,15 @@ import (
 )
 
 type Config struct {
-	lastInput []string
-	commands  map[string]cliCommand
-	Rl        *readline.Instance
+	lastInput      []string
+	commands       map[string]cliCommand
+	rlAutoComplete *readline.PrefixCompleter
+	Rl             *readline.Instance
 }
 
 func InitConfig() *Config {
 	c := Config{}
-	c.Rl = InitReadline()
+	c.Rl, c.rlAutoComplete = InitReadline()
 	c.commands = map[string]cliCommand{}
 
 	return &c
@@ -40,6 +41,18 @@ func (c *Config) AddCommand(name string, function func([]CommandArg) error, args
 	}
 
 	c.commands[name] = newCommand
+
+	c.rlAutoComplete.Children = append(c.rlAutoComplete.Children,
+		readline.PcItem(name),
+	)
+
+	argsChildren := []readline.PrefixCompleterInterface{}
+	for _, arg := range args {
+		argsChildren = append(argsChildren,
+			readline.PcItem(arg.Name+"="),
+		)
+	}
+	c.rlAutoComplete.Children[len(c.rlAutoComplete.Children)-1].SetChildren(argsChildren)
 }
 
 func (c *Config) commandLookup(input string) (cliCommand, bool) {
