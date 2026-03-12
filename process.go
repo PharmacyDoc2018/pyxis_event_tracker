@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 
@@ -64,10 +65,65 @@ type PyxisEvent struct {
 	MedDisplayName        string
 	TransactionType       string
 	TxDateTime            time.Time //-- needs conversion from date + string
-	StrengthRemoved       string    //--needs conversion from float? + string
-	EnteredQuantity       string    //-- needs conversion from float
+	EnteredQuantity       float64
 	EnteredUOMDisplayCode string
-	BegInventory          int
+	AmountReferenced      string //--needs conversion from float? + string
+	BegInventory          float64
+	EndInventory          float64
+	WitnessName           string
+	WitnessID             string
+	MRN                   string
+}
+
+type PyxisEventLog struct {
+	Log            []PyxisEvent
+	StartDate      time.Time
+	FirstEventDate time.Time
+	LastEventDate  time.Time
+	PyxisName      string
+}
+
+func (p *PyxisEventLog) cleanUp() {
+	//-- resort the events
+	fmt.Printf("sorting %s event log\n...", p.PyxisName)
+	sort.Slice(p.Log, func(i, j int) bool {
+		return p.Log[i].TxDateTime.Before(p.Log[j].TxDateTime)
+	})
+	fmt.Println("sorting complete!")
+
+	//-- check for duplicates
+	fmt.Println("checking for duplicates")
+	newLog := []PyxisEvent{}
+	numDups := 0
+	newLog = append(newLog, p.Log[0])
+	for i := 1; i < len(p.Log); i++ {
+		if p.Log[i] == p.Log[i-1] {
+			numDups++
+			continue
+		} else {
+			newLog = append(newLog, p.Log[i])
+		}
+	}
+	p.Log = newLog
+	switch numDups {
+	case 0:
+		fmt.Println("check complete! no duplicates found")
+
+	case 1:
+		fmt.Println("check complete! 1 duplicate removed")
+
+	default:
+		fmt.Printf("check complete! %d duplicates removed\n", numDups)
+	}
+
+	//-- update date range
+	p.FirstEventDate = p.Log[0].TxDateTime
+	p.LastEventDate = p.Log[len(p.Log)-1].TxDateTime
+}
+
+func (p *PyxisEventLog) AddEvents(events []PyxisEvent) {
+	p.Log = append(p.Log, events...)
+	p.cleanUp()
 }
 
 func initProcess() *ProcessState {
@@ -88,4 +144,12 @@ func initProcess() *ProcessState {
 	p.cache = cache.NewCache(cacheInterval, p.cacheStop)
 
 	return &p
+}
+
+func createNewPyxisEventLog(pyxisName string, startDate time.Time) *PyxisEventLog {
+	return &PyxisEventLog{
+		Log:       []PyxisEvent{},
+		StartDate: startDate,
+		PyxisName: pyxisName,
+	}
 }
