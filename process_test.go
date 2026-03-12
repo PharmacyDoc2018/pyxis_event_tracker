@@ -81,4 +81,61 @@ func TestPyxisEventLog(t *testing.T) {
 	if len(testPyxis.Log) != 3 {
 		t.Fatalf("error. AddEvents method failed to add pyxis events")
 	}
+
+	newEvents := []PyxisEvent{
+		{
+			ItemTransactionKey:    uuid.New(),
+			UserName:              "Testnurse, One",
+			UserID:                "abc1a",
+			StorageSpace:          "TESTPYXIS_MAIN Drw 4.1-Pkt E5",
+			ItemID:                "49375",
+			MedClassCode:          "3",
+			MedDisplayName:        "lorazepam 0.5 mg TABLET UD",
+			TransactionType:       "Remove",
+			TxDateTime:            firstEventTime.Add(24 * time.Hour),
+			EnteredQuantity:       1.0000,
+			EnteredUOMDisplayCode: "Dosage Form",
+			AmountReferenced:      "0.5 mg",
+			BegInventory:          13.0000,
+			EndInventory:          12.0000,
+			WitnessName:           "None/Unknown",
+			WitnessID:             "Unknown",
+			MRN:                   "2143657",
+		},
+		{
+			ItemTransactionKey:    uuid.New(),
+			UserName:              "Testnurse, Two",
+			UserID:                "abc2b",
+			StorageSpace:          "TESTPYXIS_MAIN Drw 5.1-Pkt E6",
+			ItemID:                "98367",
+			MedClassCode:          "Non-Controlled",
+			MedDisplayName:        "acetaminophen 325 mg TABLET UD",
+			TransactionType:       "Remove",
+			TxDateTime:            secondEventTime.Add(24 * time.Hour),
+			EnteredQuantity:       2.0000,
+			EnteredUOMDisplayCode: "Dosage Form",
+			AmountReferenced:      "0.5 mg",
+			BegInventory:          97.0000,
+			EndInventory:          95.0000,
+			WitnessName:           "None/Unknown",
+			WitnessID:             "Unknown",
+			MRN:                   "9876543",
+		},
+	}
+
+	testPyxis.AddEvents(newEvents)
+	expectedOrder := []string{
+		"oxyCODONE 5 mg TABLET UD",
+		"lorazepam 0.5 mg TABLET UD",
+		"PROCHLORPERAZINE 10 mg TABLET UD",
+		"acetaminophen 325 mg TABLET UD",
+		"diphenhydrAMINE 50 mg (1 mL) VIAL",
+	}
+
+	for i, event := range testPyxis.Log {
+		if event.MedDisplayName != expectedOrder[i] {
+			t.Errorf("error. expected %s. found %s", expectedOrder[i], event.MedDisplayName)
+		}
+	}
+
 }

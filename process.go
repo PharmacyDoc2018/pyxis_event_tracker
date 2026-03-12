@@ -19,13 +19,13 @@ import (
 const cacheInterval = 60 * time.Minute
 
 type ProcessState struct {
-	PyxisUnits   []string
-	db           *sql.DB
-	dbq          *database.Queries
-	cliConfig    *cli.Config
-	cache        *cache.Cache
-	cacheStop    chan struct{}
-	dbConnection bool
+	PyxisUnitsLogs []PyxisEventLog
+	db             *sql.DB
+	dbq            *database.Queries
+	cliConfig      *cli.Config
+	cache          *cache.Cache
+	cacheStop      chan struct{}
+	dbConnection   bool
 }
 
 type ValType int
