@@ -126,6 +126,14 @@ func (p *PyxisEventLog) AddEvents(events []PyxisEvent) {
 	p.cleanUp()
 }
 
+func createNewPyxisEventLog(pyxisName string, startDate time.Time) *PyxisEventLog {
+	return &PyxisEventLog{
+		Log:       []PyxisEvent{},
+		StartDate: startDate,
+		PyxisName: pyxisName,
+	}
+}
+
 func initProcess() *ProcessState {
 	p := ProcessState{}
 
@@ -146,10 +154,9 @@ func initProcess() *ProcessState {
 	return &p
 }
 
-func createNewPyxisEventLog(pyxisName string, startDate time.Time) *PyxisEventLog {
-	return &PyxisEventLog{
-		Log:       []PyxisEvent{},
-		StartDate: startDate,
-		PyxisName: pyxisName,
-	}
+func (p *ProcessState) exit() {
+	p.cliConfig.Rl.Close()
+	close(p.cacheStop)
+	time.Sleep(500 * time.Millisecond)
+	os.Exit(0)
 }
