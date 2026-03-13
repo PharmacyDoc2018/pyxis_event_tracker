@@ -3,6 +3,8 @@ package database
 import (
 	"context"
 	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 type MedicationName struct {
@@ -43,4 +45,96 @@ func (q *Queries) ListControlTwoMedsByDevice(ctx context.Context, device string)
 		return nil, err
 	}
 	return items, nil
+}
+
+const getPyxisEventsByDevice = `
+SELECT
+	t.ItemTransactionKey,
+	u.FullName AS UserName,
+	u.UserID,
+	space.StorageSpaceShortName AS StorageSpace,
+	i.ItemID,
+	i.MedClassCode,
+	i.MedDisplayCode,
+	tc.TransactionType,
+	t.Tx_Date AS TxDate,
+	time.string_representation_24 AS TxTime,
+	t.EnteredQuantity,
+	t.EnteredUOMDisplayCode,
+	CAST(
+		CASE
+			WHEN t.EnteredUOMDisplayCode IS NULL
+				THEN NULL
+			WHEN t.EnteredUOMDisplayCode = 'Dosage Form'
+				THEN t.EnteredQuantity * i.StrengthAmount
+			WHEN t.EnteredUOMDisplayCode = i.VolumeUnit_DisplayCode
+				THEN (t.EnteredQuantity * i.StrengthAmount) / i.TotalVolumeAmount
+			ELSE
+				t.EnteredQuantity
+		END
+		AS numeric(18,4)
+	) AS AmountReferenced,
+	i.StrengthUnit_DisplayCode AS AmountReferencedUnits,
+	t.BegInventory,
+	t.EndInventory,
+	w.FullName AS WitnessName,
+	w.UserID AS WitnessID,
+	p.PatientID AS MRN
+FROM PYX.fctItemTransaction t
+INNER JOIN PYX.dimDispensingDevice d
+	ON t.UserAtDispensingDeviceKey = d.DispensingDeviceKey
+INNER JOIN PYX.dimItem i
+	ON t.ItemKey = i.ItemKey
+INNER JOIN dbo.dimTime time
+	ON t.Tx_TimeKey = time.DimTime_key
+LEFT JOIN PYX.fctItemEncounters e
+	ON t.EncounterKey = e.EncounterKey
+INNER JOIN PYX.dimUserAccount u
+	ON t.UserAccountKey = u.UserAccountKey
+INNER JOIN PYX.dimUserAccount w
+	ON t.WitnessAccountKey = w.UserAccountKey
+INNER JOIN PYX.dimTransactionCharacteristics tc
+	ON t.sk_dim_TxChar = tc.sk_dim_TxChar
+LEFT JOIN PYX.fctPatient p
+	ON e.PatientKey = p.PatientKey
+LEFT JOIN PYX.dimStorageSpace space
+	ON t.StorageSpaceKey = space.StorageSpaceKey
+WHERE d.DispensingDeviceName = @device
+AND t.TransactionLocalDateTime >= @start
+AND t.TransactionLocalDateTime < @end
+AND NOT (
+	tc.TransactionType = 'Remove'
+	AND
+	t.BegInventory IS NULL
+)
+ORDER BY
+	t.Tx_Date,
+	time.string_representation_24,
+	e.LastItemTransactionLocalDateTime;
+`
+
+type PyxisEventResponse struct {
+	ItemTransactionKey    uuid.UUID
+	UserName              sql.NullString
+	UserID                sql.NullString
+	StorageSpace          sql.NullString
+	ItemID                sql.NullString
+	MedClassCode          sql.NullString
+	MedDisplayName        sql.NullString
+	TransactionType       sql.NullString
+	TxDate                sql.NullTime
+	TxTime                sql.NullTime
+	EnteredQuantity       sql.NullFloat64
+	EnteredUOMDisplayCode sql.NullString
+	AmountReferenced      sql.NullFloat64
+	AmountReferencedUnits sql.NullString
+	BegInventory          sql.NullFloat64
+	EndInventory          sql.NullFloat64
+	WitnessName           sql.NullString
+	WitnessID             sql.NullString
+	MRN                   sql.NullString
+}
+
+func (q *Queries) GetPyxisEventsForDeviceByDateRange(ctx context.Context, device, start, end string) ([]PyxisEventResponse, error) {
+	//
 }
