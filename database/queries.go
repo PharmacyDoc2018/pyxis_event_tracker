@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -47,7 +48,7 @@ func (q *Queries) ListControlTwoMedsByDevice(ctx context.Context, device string)
 	return items, nil
 }
 
-const getPyxisEventsByDevice = `
+const getPyxisEventsForDeviceByDateRange = `
 SELECT
 	t.ItemTransactionKey,
 	u.FullName AS UserName,
@@ -135,6 +136,64 @@ type PyxisEventResponse struct {
 	MRN                   sql.NullString
 }
 
-func (q *Queries) GetPyxisEventsForDeviceByDateRange(ctx context.Context, device, start, end string) ([]PyxisEventResponse, error) {
-	//
+type GetPyxisEventsForDeviceByDateRangeParams struct {
+	Device string
+	Start  string
+	End    string
+}
+
+func (q *Queries) GetPyxisEventsForDeviceByDateRange(ctx context.Context, arg GetPyxisEventsForDeviceByDateRangeParams) ([]PyxisEventResponse, error) {
+	startDate, err := parseDate(arg.Start)
+	if err != nil {
+		return nil, fmt.Errorf("error. unable to parse start date: %s", err.Error())
+	}
+
+	endDate, err := parseDate(arg.End)
+	if err != nil {
+		return nil, fmt.Errorf("error. unable to parse end date: %s", err.Error())
+	}
+
+	rows, err := q.db.QueryContext(ctx, getPyxisEventsForDeviceByDateRange, sql.Named("device", arg.Device), sql.Named("start", startDate.Format("2006-01-02")), sql.Named("end", endDate.Format("2006-01-02")))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []PyxisEventResponse
+	for rows.Next() {
+		var i PyxisEventResponse
+		if err := rows.Scan(
+			&i.ItemTransactionKey,
+			&i.UserName,
+			&i.UserID,
+			&i.StorageSpace,
+			&i.ItemID,
+			&i.MedClassCode,
+			&i.MedDisplayName,
+			&i.TransactionType,
+			&i.TxDate,
+			&i.TxTime,
+			&i.EnteredQuantity,
+			&i.EnteredUOMDisplayCode,
+			&i.AmountReferenced,
+			&i.AmountReferencedUnits,
+			&i.BegInventory,
+			&i.EndInventory,
+			&i.WitnessName,
+			&i.WitnessID,
+			&i.MRN,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+
 }
