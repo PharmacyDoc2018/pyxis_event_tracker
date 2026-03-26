@@ -56,7 +56,7 @@ SELECT
 	space.StorageSpaceShortName AS StorageSpace,
 	i.ItemID,
 	i.MedClassCode,
-	i.MedDisplayCode,
+	i.MedDisplayName,
 	tc.TransactionType,
 	t.Tx_Date AS TxDate,
 	time.string_representation_24 AS TxTime,
@@ -124,7 +124,7 @@ type PyxisEventResponse struct {
 	MedDisplayName        sql.NullString
 	TransactionType       sql.NullString
 	TxDate                sql.NullTime
-	TxTime                sql.NullTime
+	TxTime                sql.NullString
 	EnteredQuantity       sql.NullFloat64
 	EnteredUOMDisplayCode sql.NullString
 	AmountReferenced      sql.NullFloat64
@@ -153,14 +153,16 @@ func (q *Queries) GetPyxisEventsForDeviceByDateRange(ctx context.Context, arg Ge
 		return nil, fmt.Errorf("error. unable to parse end date: %s", err.Error())
 	}
 
-	rows, err := q.db.QueryContext(ctx, getPyxisEventsForDeviceByDateRange, sql.Named("device", arg.Device), sql.Named("start", startDate.Format("2006-01-02")), sql.Named("end", endDate.Format("2006-01-02")))
+	rows, err := q.db.QueryContext(ctx, getPyxisEventsForDeviceByDateRange, sql.Named("device", arg.Device), sql.Named("start", startDate), sql.Named("end", endDate))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
+	ct := 0
 	var items []PyxisEventResponse
 	for rows.Next() {
+		ct++
 		var i PyxisEventResponse
 		if err := rows.Scan(
 			&i.ItemTransactionKey,
@@ -185,6 +187,7 @@ func (q *Queries) GetPyxisEventsForDeviceByDateRange(ctx context.Context, arg Ge
 		); err != nil {
 			return nil, err
 		}
+		fmt.Printf("%d items found from query\n", ct)
 		items = append(items, i)
 	}
 
