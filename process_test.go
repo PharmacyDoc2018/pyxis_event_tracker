@@ -18,7 +18,7 @@ func TestPyxisEventLog(t *testing.T) {
 	thirdEventTime, _ := time.Parse("01/02/2006 15:04", "01/06/2026 10:56")
 
 	testPyxis := createNewPyxisEventLog("testPyxis", startTime)
-	testPyxis.AddEvents([]PyxisEvent{
+	testPyxis.addEvents([]PyxisEvent{
 		{
 			ItemTransactionKey:    uuid.New(),
 			UserName:              "Testnurse, One",
@@ -123,7 +123,7 @@ func TestPyxisEventLog(t *testing.T) {
 		},
 	}
 
-	testPyxis.AddEvents(newEvents)
+	testPyxis.addEvents(newEvents)
 	expectedOrder := []string{
 		"oxyCODONE 5 mg TABLET UD",
 		"lorazepam 0.5 mg TABLET UD",

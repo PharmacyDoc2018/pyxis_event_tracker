@@ -121,9 +121,25 @@ func (p *PyxisEventLog) cleanUp() {
 	p.LastEventDate = p.Log[len(p.Log)-1].TxDateTime
 }
 
-func (p *PyxisEventLog) AddEvents(events []PyxisEvent) {
+func (p *PyxisEventLog) addEvents(events []PyxisEvent) {
 	p.Log = append(p.Log, events...)
 	p.cleanUp()
+}
+
+func (p *PyxisEventLog) findMissingEvents() {
+	now := time.Now()
+	todayMidnight := time.Date(
+		now.Year(),
+		now.Month(),
+		now.Day(),
+		0,
+		0,
+		0,
+		0,
+		now.Location(),
+	)
+
+	//-- run query for events from > p.LastEventDate to todayMidnight
 }
 
 func createNewPyxisEventLog(pyxisName string, startDate time.Time) *PyxisEventLog {
