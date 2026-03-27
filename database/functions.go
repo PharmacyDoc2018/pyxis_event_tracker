@@ -19,7 +19,7 @@ func parseDate(dateString string) (time.Time, error) {
 
 	for _, format := range dateFormats {
 		date, err := time.Parse(format, dateString)
-		if err != nil {
+		if err == nil {
 			return date, nil
 		}
 	}

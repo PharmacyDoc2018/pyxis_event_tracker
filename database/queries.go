@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -154,20 +153,14 @@ func (q *Queries) GetPyxisEventsForDeviceByDateRange(ctx context.Context, arg Ge
 		return nil, fmt.Errorf("error. unable to parse end date: %s", err.Error())
 	}
 
-	fmt.Println("device:", arg.Device)
-	fmt.Println("start:", startDate.Format(time.RFC3339Nano))
-	fmt.Println("end:  ", endDate.Format(time.RFC3339Nano))
-
 	rows, err := q.db.QueryContext(ctx, getPyxisEventsForDeviceByDateRange, sql.Named("device", arg.Device), sql.Named("start", startDate), sql.Named("end", endDate))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	ct := 0
 	var items []PyxisEventResponse
 	for rows.Next() {
-		ct++
 		var i PyxisEventResponse
 		if err := rows.Scan(
 			&i.ItemTransactionKey,
@@ -194,8 +187,6 @@ func (q *Queries) GetPyxisEventsForDeviceByDateRange(ctx context.Context, arg Ge
 		}
 		items = append(items, i)
 	}
-
-	fmt.Printf("%d items found from query\n", ct)
 
 	if err := rows.Close(); err != nil {
 		return nil, err
