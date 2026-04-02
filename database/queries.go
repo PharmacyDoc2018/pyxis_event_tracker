@@ -58,8 +58,7 @@ SELECT
 	i.MedClassCode,
 	i.MedDisplayName,
 	tc.TransactionType,
-	t.Tx_Date AS TxDate,
-	time.string_representation_24 AS TxTime,
+	t.TransactionLocalDateTime,
 	t.EnteredQuantity,
 	t.EnteredUOMDisplayCode,
 	CAST(
@@ -101,7 +100,7 @@ LEFT JOIN PYX.fctPatient p
 LEFT JOIN PYX.dimStorageSpace space
 	ON t.StorageSpaceKey = space.StorageSpaceKey
 WHERE d.DispensingDeviceName = @device
-AND t.TransactionLocalDateTime >= @start
+AND t.TransactionLocalDateTime > @start
 AND t.TransactionLocalDateTime < @end
 AND NOT (
 	tc.TransactionType = 'Remove'
@@ -123,8 +122,7 @@ type PyxisEventResponse struct {
 	MedClassCode          sql.NullString
 	MedDisplayName        sql.NullString
 	TransactionType       sql.NullString
-	TxDate                sql.NullTime
-	TxTime                sql.NullString
+	TxDateTime            sql.NullTime
 	EnteredQuantity       sql.NullFloat64
 	EnteredUOMDisplayCode sql.NullString
 	AmountReferenced      sql.NullFloat64
@@ -171,8 +169,7 @@ func (q *Queries) GetPyxisEventsForDeviceByDateRange(ctx context.Context, arg Ge
 			&i.MedClassCode,
 			&i.MedDisplayName,
 			&i.TransactionType,
-			&i.TxDate,
-			&i.TxTime,
+			&i.TxDateTime,
 			&i.EnteredQuantity,
 			&i.EnteredUOMDisplayCode,
 			&i.AmountReferenced,

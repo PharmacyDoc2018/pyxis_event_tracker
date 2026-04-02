@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -26,6 +27,23 @@ type ProcessState struct {
 	cache          *cache.Cache
 	cacheStop      chan struct{}
 	dbConnection   bool
+}
+
+func (p *ProcessState) findMissingEvents() {
+	for i := range p.PyxisUnitsLogs {
+		params := database.GetPyxisEventsForDeviceByDateRangeParams{
+			Device: p.PyxisUnitsLogs[i].PyxisName,
+			Start:  p.PyxisUnitsLogs[i].lastEventDateString(),
+			End:    time.Now().Format("2006-01-02"),
+		}
+
+		events, err := p.dbq.GetPyxisEventsForDeviceByDateRange(context.Background(), params)
+		if err != nil {
+			fmt.Println(err.Error())
+			continue
+		}
+
+	}
 }
 
 type ValType int
@@ -126,20 +144,41 @@ func (p *PyxisEventLog) addEvents(events []PyxisEvent) {
 	p.cleanUp()
 }
 
-func (p *PyxisEventLog) findMissingEvents() {
-	now := time.Now()
-	todayMidnight := time.Date(
-		now.Year(),
-		now.Month(),
-		now.Day(),
-		0,
-		0,
-		0,
-		0,
-		now.Location(),
-	)
+func (p *PyxisEventLog) lastEventDateString() string {
+	if p.LastEventDate.IsZero() {
+		return ""
+	}
 
-	//-- run query for events from > p.LastEventDate to todayMidnight
+	return p.LastEventDate.Format("2006-01-02 15:04")
+}
+
+func (p *PyxisEventLog) parseEventsAndAdd(events []database.PyxisEventResponse) {
+	parsedEvents := []PyxisEvent{}
+
+	for _, event := range events {
+		pyxisEvent := PyxisEvent{}
+		pyxisEvent.ItemTransactionKey = event.ItemTransactionKey
+
+		if event.UserName.Valid {
+			pyxisEvent.UserName = event.UserName.String
+		} else {
+			pyxisEvent.UserName = ""
+		}
+
+		if event.UserID.Valid {
+			pyxisEvent.UserID = event.UserID.String
+		} else {
+			pyxisEvent.UserID = ""
+		}
+
+		if event.StorageSpace.Valid {
+			pyxisEvent.StorageSpace = event.StorageSpace.String
+		} else {
+			pyxisEvent.StorageSpace = ""
+		}
+
+	}
+
 }
 
 func createNewPyxisEventLog(pyxisName string, startDate time.Time) *PyxisEventLog {
