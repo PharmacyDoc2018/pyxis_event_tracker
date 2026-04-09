@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -136,22 +136,12 @@ type PyxisEventResponse struct {
 
 type GetPyxisEventsForDeviceByDateRangeParams struct {
 	Device string
-	Start  string
-	End    string
+	Start  time.Time
+	End    time.Time
 }
 
 func (q *Queries) GetPyxisEventsForDeviceByDateRange(ctx context.Context, arg GetPyxisEventsForDeviceByDateRangeParams) ([]PyxisEventResponse, error) {
-	startDate, err := parseDate(arg.Start)
-	if err != nil {
-		return nil, fmt.Errorf("error. unable to parse start date: %s", err.Error())
-	}
-
-	endDate, err := parseDate(arg.End)
-	if err != nil {
-		return nil, fmt.Errorf("error. unable to parse end date: %s", err.Error())
-	}
-
-	rows, err := q.db.QueryContext(ctx, getPyxisEventsForDeviceByDateRange, sql.Named("device", arg.Device), sql.Named("start", startDate), sql.Named("end", endDate))
+	rows, err := q.db.QueryContext(ctx, getPyxisEventsForDeviceByDateRange, sql.Named("device", arg.Device), sql.Named("start", arg.Start), sql.Named("end", arg.End))
 	if err != nil {
 		return nil, err
 	}

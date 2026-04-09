@@ -1,12 +1,10 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"os"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/PharmacyDoc2018/pyxis_event_tracker/cache"
@@ -33,44 +31,18 @@ func (p *ProcessState) findMissingEvents() {
 	for i := range p.PyxisUnitsLogs {
 		params := database.GetPyxisEventsForDeviceByDateRangeParams{
 			Device: p.PyxisUnitsLogs[i].PyxisName,
-			Start:  p.PyxisUnitsLogs[i].lastEventDateString(),
-			End:    time.Now().Format("2006-01-02"),
+			Start:  p.PyxisUnitsLogs[i].LastEventDateTime,
+			End:    time.Now(),
 		}
 
-		events, err := p.dbq.GetPyxisEventsForDeviceByDateRange(context.Background(), params)
+		events, err := getPyxisEvents(p, params)
 		if err != nil {
 			fmt.Println(err.Error())
 			continue
 		}
 
+		p.PyxisUnitsLogs[i].parseEventsAndAdd(events)
 	}
-}
-
-type ValType int
-
-const (
-	Null ValType = iota
-	Int
-	Float
-)
-
-type PyxisQuantity struct {
-	Type  ValType
-	Int   int64
-	Float float64
-}
-
-func (pq PyxisQuantity) PrintVal() string {
-	switch pq.Type {
-	case Null:
-		return "null"
-	case Int:
-		return strconv.Itoa(int(pq.Int))
-	case Float:
-		return strconv.FormatFloat(pq.Float, 'f', -1, 64)
-	}
-
-	return ""
 }
 
 type PyxisEvent struct {
@@ -82,10 +54,11 @@ type PyxisEvent struct {
 	MedClassCode          string
 	MedDisplayName        string
 	TransactionType       string
-	TxDateTime            time.Time //-- needs conversion from date + string
+	TxDateTime            time.Time
 	EnteredQuantity       float64
 	EnteredUOMDisplayCode string
-	AmountReferenced      string //--needs conversion from float? + string
+	AmountReferenced      float64
+	AmountReferencedUnits string
 	BegInventory          float64
 	EndInventory          float64
 	WitnessName           string
@@ -94,11 +67,10 @@ type PyxisEvent struct {
 }
 
 type PyxisEventLog struct {
-	Log            []PyxisEvent
-	StartDate      time.Time
-	FirstEventDate time.Time
-	LastEventDate  time.Time
-	PyxisName      string
+	Log               []PyxisEvent
+	StartDateTime     time.Time
+	LastEventDateTime time.Time
+	PyxisName         string
 }
 
 func (p *PyxisEventLog) cleanUp() {
@@ -135,8 +107,7 @@ func (p *PyxisEventLog) cleanUp() {
 	}
 
 	//-- update date range
-	p.FirstEventDate = p.Log[0].TxDateTime
-	p.LastEventDate = p.Log[len(p.Log)-1].TxDateTime
+	p.LastEventDateTime = p.Log[len(p.Log)-1].TxDateTime
 }
 
 func (p *PyxisEventLog) addEvents(events []PyxisEvent) {
@@ -145,11 +116,11 @@ func (p *PyxisEventLog) addEvents(events []PyxisEvent) {
 }
 
 func (p *PyxisEventLog) lastEventDateString() string {
-	if p.LastEventDate.IsZero() {
+	if p.LastEventDateTime.IsZero() {
 		return ""
 	}
 
-	return p.LastEventDate.Format("2006-01-02 15:04")
+	return p.LastEventDateTime.Format("2006-01-02 15:04")
 }
 
 func (p *PyxisEventLog) parseEventsAndAdd(events []database.PyxisEventResponse) {
@@ -177,15 +148,102 @@ func (p *PyxisEventLog) parseEventsAndAdd(events []database.PyxisEventResponse) 
 			pyxisEvent.StorageSpace = ""
 		}
 
+		if event.ItemID.Valid {
+			pyxisEvent.ItemID = event.ItemID.String
+		} else {
+			pyxisEvent.ItemID = ""
+		}
+
+		if event.MedClassCode.Valid {
+			pyxisEvent.MedClassCode = event.MedClassCode.String
+		} else {
+			pyxisEvent.MedClassCode = ""
+		}
+
+		if event.MedDisplayName.Valid {
+			pyxisEvent.MedDisplayName = event.MedDisplayName.String
+		} else {
+			pyxisEvent.MedDisplayName = ""
+		}
+
+		if event.TransactionType.Valid {
+			pyxisEvent.TransactionType = event.TransactionType.String
+		} else {
+			pyxisEvent.TransactionType = ""
+		}
+
+		if event.TxDateTime.Valid {
+			pyxisEvent.TxDateTime = event.TxDateTime.Time
+		} else {
+			pyxisEvent.TxDateTime = time.Time{}
+		}
+
+		if event.EnteredQuantity.Valid {
+			pyxisEvent.EnteredQuantity = event.EnteredQuantity.Float64
+		} else {
+			pyxisEvent.EnteredQuantity = 0.0000
+		}
+
+		if event.EnteredUOMDisplayCode.Valid {
+			pyxisEvent.EnteredUOMDisplayCode = event.EnteredUOMDisplayCode.String
+		} else {
+			pyxisEvent.EnteredUOMDisplayCode = ""
+		}
+
+		if event.AmountReferenced.Valid {
+			pyxisEvent.AmountReferenced = event.AmountReferenced.Float64
+		} else {
+			pyxisEvent.AmountReferenced = 0.0000
+		}
+
+		if event.AmountReferencedUnits.Valid {
+			pyxisEvent.AmountReferencedUnits = event.AmountReferencedUnits.String
+		} else {
+			pyxisEvent.AmountReferencedUnits = ""
+		}
+
+		if event.BegInventory.Valid {
+			pyxisEvent.BegInventory = event.BegInventory.Float64
+		} else {
+			pyxisEvent.BegInventory = 0.0000
+		}
+
+		if event.EndInventory.Valid {
+			pyxisEvent.EndInventory = event.EndInventory.Float64
+		} else {
+			pyxisEvent.EndInventory = 0.0000
+		}
+
+		if event.WitnessName.Valid {
+			pyxisEvent.WitnessName = event.WitnessName.String
+		} else {
+			pyxisEvent.WitnessName = ""
+		}
+
+		if event.WitnessID.Valid {
+			pyxisEvent.WitnessID = event.WitnessID.String
+		} else {
+			pyxisEvent.WitnessID = ""
+		}
+
+		if event.MRN.Valid {
+			pyxisEvent.MRN = event.MRN.String
+		} else {
+			pyxisEvent.MRN = ""
+		}
+
+		parsedEvents = append(parsedEvents, pyxisEvent)
 	}
+
+	p.addEvents(parsedEvents)
 
 }
 
-func createNewPyxisEventLog(pyxisName string, startDate time.Time) *PyxisEventLog {
+func createNewPyxisEventLog(pyxisName string, startDateTime time.Time) *PyxisEventLog {
 	return &PyxisEventLog{
-		Log:       []PyxisEvent{},
-		StartDate: startDate,
-		PyxisName: pyxisName,
+		Log:           []PyxisEvent{},
+		StartDateTime: startDateTime,
+		PyxisName:     pyxisName,
 	}
 }
 
