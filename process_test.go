@@ -1,9 +1,11 @@
 package main
 
 import (
+	"database/sql"
 	"testing"
 	"time"
 
+	"github.com/PharmacyDoc2018/pyxis_event_tracker/database"
 	"github.com/google/uuid"
 )
 
@@ -143,4 +145,119 @@ func TestPyxisEventLog(t *testing.T) {
 		}
 	}
 
+}
+
+func TestParseDate(t *testing.T) {
+	dateString := "01/01/2026"
+
+	date, err := parseDate(dateString)
+	if err != nil {
+		t.Errorf("error. couldn't parse date: %s", err.Error())
+	}
+
+	newDateString := date.Format("2006-01-02")
+	if newDateString != "2026-01-01" {
+		t.Errorf("error. date not parsed correctly. expected 2026-01-01. actual %s", newDateString)
+	}
+}
+
+func TestCache(t *testing.T) {
+	p := initProcess()
+
+	err := p.db.Ping()
+	if err != nil {
+		p.dbConnection = false
+	} else {
+		p.dbConnection = true
+	}
+	if p.dbConnection {
+		p.db.Close()
+	}
+
+	startTime, err := time.Parse("2006-01-02 15:04", "2026-01-01 12:00")
+	if err != nil {
+		t.Errorf("failed to generate startTime: %s", err.Error())
+	}
+
+	log := createNewPyxisEventLog("TESTPYXIS", startTime)
+	p.PyxisUnitsLogs = append(p.PyxisUnitsLogs, log)
+
+	testEventTime, err := time.Parse("2006-01-02 15:04", "2026-01-01 12:01")
+	if err != nil {
+		t.Errorf("failed to generate testEventTime: %s", err.Error())
+	}
+
+	testEvent := database.PyxisEventResponse{
+		ItemTransactionKey: uuid.New(),
+		UserName: sql.NullString{
+			String: "Testnurse, One",
+			Valid:  true,
+		},
+		UserID: sql.NullString{
+			String: "tst1a",
+			Valid:  true,
+		},
+		StorageSpace: sql.NullString{
+			String: "SomePyxisPocket",
+			Valid:  true,
+		},
+		ItemID: sql.NullString{
+			String: "1234567",
+			Valid:  true,
+		},
+		MedClassCode: sql.NullString{
+			String: "1234567",
+			Valid:  true,
+		},
+		MedDisplayName: sql.NullString{
+			String: "Test Medication 0 mg",
+			Valid:  true,
+		},
+		TransactionType: sql.NullString{
+			String: "Remove",
+			Valid:  true,
+		},
+		TxDateTime: sql.NullTime{
+			Time:  testEventTime,
+			Valid: true,
+		},
+		EnteredQuantity: sql.NullFloat64{
+			Float64: 1.0000,
+			Valid:   true,
+		},
+		EnteredUOMDisplayCode: sql.NullString{
+			String: "test tab",
+			Valid:  true,
+		},
+		AmountReferenced: sql.NullFloat64{
+			Float64: 0.0000,
+			Valid:   true,
+		},
+		AmountReferencedUnits: sql.NullString{
+			String: "mg",
+			Valid:  true,
+		},
+		BegInventory: sql.NullFloat64{
+			Float64: 3.0000,
+			Valid:   true,
+		},
+		EndInventory: sql.NullFloat64{
+			Float64: 2.0000,
+			Valid:   true,
+		},
+		WitnessName: sql.NullString{
+			String: "None",
+			Valid:  true,
+		},
+		WitnessID: sql.NullString{
+			String: "None",
+			Valid:  true,
+		},
+	}
+
+	testEvents := []database.PyxisEventResponse{
+		testEvent,
+	}
+
+	close(p.cacheStop)
 }

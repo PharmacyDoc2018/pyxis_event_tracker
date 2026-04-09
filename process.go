@@ -239,8 +239,8 @@ func (p *PyxisEventLog) parseEventsAndAdd(events []database.PyxisEventResponse) 
 
 }
 
-func createNewPyxisEventLog(pyxisName string, startDateTime time.Time) *PyxisEventLog {
-	return &PyxisEventLog{
+func createNewPyxisEventLog(pyxisName string, startDateTime time.Time) PyxisEventLog {
+	return PyxisEventLog{
 		Log:           []PyxisEvent{},
 		StartDateTime: startDateTime,
 		PyxisName:     pyxisName,
