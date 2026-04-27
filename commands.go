@@ -9,10 +9,12 @@ import (
 func (p *ProcessState) setupCommands() {
 	p.cliConfig.AddCommand("hello", func([]cli.CommandArg) error {
 		fmt.Println("Hello, World!")
+		p.logger.LogInfo("Command hello executed")
 		return nil
 	})
 
 	p.cliConfig.AddCommand("exit", func([]cli.CommandArg) error {
+		p.logger.LogInfo("Command exit executed")
 		fmt.Println("closing... goodbye!")
 		p.exit()
 		return nil
