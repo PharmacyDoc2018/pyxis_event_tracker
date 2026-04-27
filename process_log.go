@@ -7,19 +7,18 @@ import (
 )
 
 type processLogger struct {
-	prefix string
 	file   *os.File
 	logger *log.Logger
 }
 
 func (p processLogger) LogInfo(message string) {
-	p.prefix = "INFO: "
-	p.logger.Println(message)
+	prefix := "INFO: "
+	p.logger.Println(prefix + message)
 }
 
 func (p processLogger) LogError(message string) {
-	p.prefix = "ERROR: "
-	p.logger.Println(message)
+	prefix := "ERROR: "
+	p.logger.Println(prefix + message)
 }
 
 func (p processLogger) Close() {
@@ -38,7 +37,6 @@ func initProcessLogger(filePath string) processLogger {
 
 	return processLogger{
 		file:   processLogFile,
-		prefix: prefix,
 		logger: logger,
 	}
 

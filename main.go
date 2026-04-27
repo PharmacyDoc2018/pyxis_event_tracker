@@ -18,9 +18,11 @@ func main() {
 		p.dbConnection = false
 		fmt.Println("connection failed!")
 		fmt.Println("warning: no database connection")
+		p.logger.LogError("Connection to database not successful")
 	} else {
 		p.dbConnection = true
 		fmt.Println("connection successful")
+		p.logger.LogInfo("Connection to database successful")
 	}
 
 	p.cliConfig = cli.InitConfig()
