@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -257,6 +258,39 @@ func TestCache(t *testing.T) {
 
 	testEvents := []database.PyxisEventResponse{
 		testEvent,
+	}
+
+	data, err := json.Marshal(&testEvents)
+	if err != nil {
+		t.Errorf("unable to marshal testEvents: %s", err.Error())
+	}
+
+	key := "GetPyxisEventsForDeviceByDateRange"
+	key += "TESTPYXIS"
+	key += "2026-01-01 00:00"
+	key += "2026-01-02 00:00"
+
+	p.cache.Add(key, data)
+
+	queryStartTime, err := time.Parse("2006-01-02 1504", "2026-01-01 0000")
+	if err != nil {
+		t.Errorf("error parsing queryStartTime: %s", err.Error())
+	}
+
+	queryEndTime, err := time.Parse("2006-01-02 1504", "2026-01-02 0000")
+	if err != nil {
+		t.Errorf("error parsing queryEndTime: %s", err.Error())
+	}
+
+	params := database.GetPyxisEventsForDeviceByDateRangeParams{
+		Device: "TESTPYXIS",
+		Start:  queryStartTime,
+		End:    queryEndTime,
+	}
+
+	_, err = getPyxisEvents(p, params)
+	if err != nil {
+		t.Errorf("cache failed. getPyxisEvents not checking cache: %s", err.Error())
 	}
 
 	close(p.cacheStop)
