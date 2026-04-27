@@ -10,6 +10,7 @@ import (
 func main() {
 	p := initProcess()
 	defer p.db.Close()
+	p.logger.LogInfo("Application Started")
 
 	fmt.Println("Attempting to connect to database...")
 	err := p.db.Ping()

@@ -19,6 +19,7 @@ const cacheInterval = 60 * time.Minute
 
 type ProcessState struct {
 	PyxisUnitsLogs []PyxisEventLog
+	logger         processLogger
 	db             *sql.DB
 	dbq            *database.Queries
 	cliConfig      *cli.Config
@@ -252,10 +253,11 @@ func initProcess() *ProcessState {
 
 	godotenv.Load(".env")
 	connString := os.Getenv("CONNSTRING")
+	processLogPath := os.Getenv("PROCESSLOGPATH")
 
 	db, err := sql.Open("sqlserver", connString)
 	if err != nil {
-		fmt.Printf("Error creating connection pool: %s\n ", err.Error())
+		fmt.Printf("error creating connection pool: %s\n ", err.Error())
 	}
 	p.db = db
 
@@ -264,11 +266,16 @@ func initProcess() *ProcessState {
 	p.cacheStop = make(chan struct{})
 	p.cache = cache.NewCache(cacheInterval, p.cacheStop)
 
+	processLogger := initProcessLogger(processLogPath)
+	p.logger = processLogger
+
 	return &p
 }
 
 func (p *ProcessState) exit() {
+	p.logger.LogInfo("Application Closed")
 	p.cliConfig.Rl.Close()
+	p.logger.Close()
 	close(p.cacheStop)
 	time.Sleep(500 * time.Millisecond)
 	os.Exit(0)
