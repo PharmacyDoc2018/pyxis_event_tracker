@@ -35,4 +35,30 @@ func (p *ProcessState) setupCommands() {
 		Name: "phrase",
 	})
 
+	p.cliConfig.AddCommand("add pyxis", func(args []cli.CommandArg) error {
+		switch len(args) {
+		case 0:
+			return fmt.Errorf("error. arguments missing. enter \"add pyxis help\" for format")
+
+		case 1:
+			switch args[0].Val {
+			case "help":
+				fmt.Println("The \"add pyxis\" command adds a Pyxis unit to the list of units to track.")
+				fmt.Println("Example command formats:")
+				fmt.Println("add pyxis [name] [start date]")
+				fmt.Println("add pyxis name=[name] start=[start date]")
+				return nil
+
+			default:
+				return fmt.Errorf("error. arguments missing. enter \"add pyxis help\" for format")
+
+			}
+
+		case 3:
+			return fmt.Errorf("error. too many arguments. enter \"add pyxis help\" for format")
+
+		}
+
+	})
+
 }
