@@ -20,8 +20,23 @@ func TestPyxisEventLog(t *testing.T) {
 	secondEventTime, _ := time.Parse("01/02/2006 15:04", "01/04/2026 13:23")
 	thirdEventTime, _ := time.Parse("01/02/2006 15:04", "01/06/2026 10:56")
 
-	testPyxis := createNewPyxisEventLog("testPyxis", startTime)
-	testPyxis.addEvents([]PyxisEvent{
+	p := initProcess()
+
+	err = p.db.Ping()
+	if err != nil {
+		p.dbConnection = false
+	} else {
+		p.dbConnection = true
+	}
+	if p.dbConnection {
+		p.db.Close()
+	}
+
+	err = p.createNewPyxisEventLog("testPyxis", startTime)
+	if err != nil {
+		t.Errorf("error creating new Pyxis event log: %s", err.Error())
+	}
+	p.addPyxisEvents(0, []PyxisEvent{
 		{
 			ItemTransactionKey:    uuid.New(),
 			UserName:              "Testnurse, One",
@@ -84,7 +99,7 @@ func TestPyxisEventLog(t *testing.T) {
 		},
 	})
 
-	if len(testPyxis.Log) != 3 {
+	if len(p.PyxisEventLogs[0].Log) != 3 {
 		t.Fatalf("error. AddEvents method failed to add pyxis events")
 	}
 
@@ -131,7 +146,7 @@ func TestPyxisEventLog(t *testing.T) {
 		},
 	}
 
-	testPyxis.addEvents(newEvents)
+	p.addPyxisEvents(0, newEvents)
 	expectedOrder := []string{
 		"oxyCODONE 5 mg TABLET UD",
 		"lorazepam 0.5 mg TABLET UD",
@@ -140,7 +155,7 @@ func TestPyxisEventLog(t *testing.T) {
 		"diphenhydrAMINE 50 mg (1 mL) VIAL",
 	}
 
-	for i, event := range testPyxis.Log {
+	for i, event := range p.PyxisEventLogs[0].Log {
 		if event.MedDisplayName != expectedOrder[i] {
 			t.Errorf("error. expected %s. found %s", expectedOrder[i], event.MedDisplayName)
 		}
@@ -180,8 +195,7 @@ func TestCache(t *testing.T) {
 		t.Errorf("failed to generate startTime: %s", err.Error())
 	}
 
-	log := createNewPyxisEventLog("TESTPYXIS", startTime)
-	p.PyxisUnitsLogs = append(p.PyxisUnitsLogs, log)
+	err = p.createNewPyxisEventLog("TESTPYXIS", startTime)
 
 	testEventTime, err := time.Parse("2006-01-02 15:04", "2026-01-01 12:01")
 	if err != nil {
