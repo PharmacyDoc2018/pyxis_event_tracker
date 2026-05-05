@@ -7,6 +7,8 @@ import (
 	"github.com/chzyer/readline"
 )
 
+const argNameValSeperator = "="
+
 type Config struct {
 	lastInput      []string
 	commands       map[string]cliCommand
@@ -23,8 +25,9 @@ func InitConfig() *Config {
 }
 
 type CommandArg struct {
-	Name string
-	Val  any
+	Name     string
+	Val      string
+	Required bool
 }
 
 type cliCommand struct {
@@ -67,26 +70,123 @@ func (c *Config) CommandExe(input string) error {
 		return nil
 	}
 
-	cmdKey := c.parseInputForCommand()
-	if cmdKey == "" {
-		return fmt.Errorf("error. no commands found")
+	command, args, err := c.parseInput()
+	if err != nil {
+		if err.Error() == "no input" {
+			return nil
+		} else {
+			return err
+		}
 	}
 
-	cmd, ok := c.commandLookup(cmdKey)
-	if !ok {
-		return fmt.Errorf("error. command %s not found", cmdKey)
-	}
-
-	//-- add arg parsing function
-	args := c.parseInputForArgs()
-
-	err := cmd.function(args)
+	err = c.commands[command].function(args)
 	if err != nil {
 		return err
 	}
 
 	return nil
 
+}
+
+func (c *Config) parseInput() (string, []CommandArg, error) {
+	//-- Handle no input given. Error should be handled by continuing readline loop:
+	if len(c.lastInput) == 0 {
+		return "", nil, fmt.Errorf("no input")
+	}
+
+	//-- Find valid command in input:
+	command := ""
+	argStrings := []string{}
+	for i := len(c.lastInput); i >= 0; i-- {
+		potentialCommand := strings.Join(c.lastInput[0:i], " ")
+		if _, okay := c.commands[potentialCommand]; okay {
+			command = potentialCommand
+			if i < len(c.lastInput) {
+				argStrings = c.lastInput[i:]
+			}
+			break
+		}
+	}
+
+	if command == "" {
+		return "", nil, fmt.Errorf("error. command not found")
+	}
+
+	args := []CommandArg{}
+	expectedArgs := c.commands[command].args
+
+	//-- Handle case of no arguments expected + none given and too many arguments given:
+	switch len(expectedArgs) {
+	case 0:
+		switch len(argStrings) {
+		case 0:
+			return command, args, nil
+
+		default:
+			return "", nil, fmt.Errorf("error. %s command takes no arguments", command)
+		}
+
+	default:
+		if len(argStrings) > len(expectedArgs) {
+			return "", nil, fmt.Errorf("error. too many arguments. %s command takes a max of %d arguments. %d arguments given", command, len(expectedArgs), len(argStrings))
+		}
+	}
+
+	//-- Attempt to match entered arguments to expected arguments:
+	remainingArgStrings := []string{}
+	remainingExpectedArgs := []CommandArg{}
+
+	for _, argString := range argStrings {
+		if strings.Contains(argString, argNameValSeperator) {
+			splitArgString := strings.Split(argString, argNameValSeperator)
+			matchedArg := false
+
+			for i, expectedArg := range expectedArgs {
+				if splitArgString[0] == expectedArg.Name {
+					args = append(args, CommandArg{
+						Name:     expectedArg.Name,
+						Val:      splitArgString[1],
+						Required: expectedArg.Required,
+					})
+					matchedArg = true
+					remainingExpectedArgs = append(remainingExpectedArgs, expectedArgs[i+1:]...)
+					break
+				} else {
+					remainingExpectedArgs = append(remainingExpectedArgs, expectedArg)
+				}
+			}
+			expectedArgs = remainingExpectedArgs
+			remainingExpectedArgs = []CommandArg{}
+
+			if !matchedArg {
+				remainingArgStrings = append(remainingArgStrings, argString)
+			}
+		} else {
+			remainingArgStrings = append(remainingArgStrings, argString)
+		}
+	}
+	argStrings = remainingArgStrings
+
+	//-- For any entered arguments left, match them to remaining expected arguments:
+	for _, argString := range argStrings {
+		arg := expectedArgs[0]
+		expectedArgs = expectedArgs[1:]
+		arg.Val = argString
+
+		args = append(args, arg)
+	}
+
+	//-- Append any remaining unmatched expected arguments:
+	args = append(args, expectedArgs...)
+
+	//-- Check to make sure all required arguments have a value:
+	for _, arg := range args {
+		if arg.Required && arg.Val == "" {
+			return "", nil, fmt.Errorf("error. %s argument required for %s command", arg.Name, command)
+		}
+	}
+
+	return command, args, nil
 }
 
 func (c *Config) parseInputForCommand() string {

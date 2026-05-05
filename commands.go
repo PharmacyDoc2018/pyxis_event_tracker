@@ -44,8 +44,7 @@ func (p *ProcessState) setupCommands() {
 			switch args[0].Val {
 			case "help":
 				fmt.Println("The \"add pyxis\" command adds a Pyxis unit to the list of units to track.")
-				fmt.Println("Example command formats:")
-				fmt.Println("add pyxis [name] [start date]")
+				fmt.Println("Example command format:")
 				fmt.Println("add pyxis name=[name] start=[start date]")
 				return nil
 
@@ -58,6 +57,8 @@ func (p *ProcessState) setupCommands() {
 			return fmt.Errorf("error. too many arguments. enter \"add pyxis help\" for format")
 
 		}
+
+		return nil
 
 	})
 
