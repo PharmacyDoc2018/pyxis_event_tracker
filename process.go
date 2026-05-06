@@ -287,6 +287,9 @@ func (p *ProcessState) createNewPyxisEventLog(pyxisName string, startDateTime ti
 		StartDateTime: startDateTime,
 		PyxisName:     pyxisName,
 	})
+	p.logger.LogInfo(fmt.Sprintf("New Pyxis event log: %s added. Logging events starting on or after %s.",
+		pyxisName,
+		startDateTime.Format("2006-01-02 1504")))
 
 	return nil
 }

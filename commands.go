@@ -36,30 +36,39 @@ func (p *ProcessState) setupCommands() {
 	})
 
 	p.cliConfig.AddCommand("add pyxis", func(args []cli.CommandArg) error {
-		switch len(args) {
-		case 0:
-			return fmt.Errorf("error. arguments missing. enter \"add pyxis help\" for format")
+		p.logger.LogInfo("Add pyxis command executed")
+		pyxisName := ""
+		startDateString := ""
 
-		case 1:
-			switch args[0].Val {
-			case "help":
-				fmt.Println("The \"add pyxis\" command adds a Pyxis unit to the list of units to track.")
-				fmt.Println("Example command format:")
-				fmt.Println("add pyxis name=[name] start=[start date]")
-				return nil
+		for _, arg := range args {
+			switch arg.Name {
+			case "name":
+				pyxisName = arg.Val
 
-			default:
-				return fmt.Errorf("error. arguments missing. enter \"add pyxis help\" for format")
-
+			case "start_date":
+				startDateString = arg.Val
 			}
+		}
 
-		case 3:
-			return fmt.Errorf("error. too many arguments. enter \"add pyxis help\" for format")
+		startDate, err := parseDate(startDateString)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Error. Unable to parse start date for new Pyxis event log: %s", err.Error()))
+			return err
+		}
 
+		err = p.createNewPyxisEventLog(pyxisName, startDate)
+		if err != nil {
+			return err
 		}
 
 		return nil
 
+	}, cli.CommandArg{
+		Name:     "name",
+		Required: true,
+	}, cli.CommandArg{
+		Name:     "start_date",
+		Required: true,
 	})
 
 }
