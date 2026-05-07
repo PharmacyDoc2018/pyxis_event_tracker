@@ -3,3 +3,4 @@ pyxis_event_tracker
 build_for_windows.sh
 pyxis_event_tracker.exe
 /logs
+/data

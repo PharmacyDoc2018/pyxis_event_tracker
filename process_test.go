@@ -161,6 +161,8 @@ func TestPyxisEventLog(t *testing.T) {
 		}
 	}
 
+	p.savePyxisEventLogs()
+
 }
 
 func TestParseDate(t *testing.T) {
