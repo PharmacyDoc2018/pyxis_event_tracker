@@ -21,6 +21,7 @@ func TestPyxisEventLog(t *testing.T) {
 	thirdEventTime, _ := time.Parse("01/02/2006 15:04", "01/06/2026 10:56")
 
 	p := initProcess()
+	p.PyxisEventLogs = []PyxisEventLog{}
 
 	err = p.db.Ping()
 	if err != nil {
@@ -161,7 +162,20 @@ func TestPyxisEventLog(t *testing.T) {
 		}
 	}
 
-	p.savePyxisEventLogs()
+	err = p.savePyxisEventLogs()
+	if err != nil {
+		t.Errorf("error saving test Pyxis event logs: %s", err.Error())
+	}
+
+	p.PyxisEventLogs = []PyxisEventLog{}
+	err = p.loadPyxisEventLogs()
+	if err != nil {
+		t.Errorf("error loading test Pyxis event logs: %s", err.Error())
+	}
+
+	if len(p.PyxisEventLogs[0].Log) != 5 {
+		t.Errorf("error. all test Pyxis event log data not retrieved from save data. Expected: %d. Actual: %d", 5, len(p.PyxisEventLogs[0].Log))
+	}
 
 }
 

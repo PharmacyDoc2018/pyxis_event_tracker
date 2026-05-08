@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/PharmacyDoc2018/pyxis_event_tracker/cache"
@@ -322,6 +323,11 @@ func initProcess() *ProcessState {
 	processLogger := initProcessLogger(processLogPath)
 	p.logger = processLogger
 
+	err = p.loadPyxisEventLogs()
+	if err != nil {
+		fmt.Printf("error loading Pyxis event logs: %s\n", err.Error())
+	}
+
 	return &p
 }
 
@@ -381,5 +387,102 @@ func (p *ProcessState) savePyxisEventLogs() error {
 		}
 	}
 
+	return nil
+}
+
+func (p *ProcessState) loadPyxisEventLogs() error {
+	type unmatchedLog struct {
+		Name string
+		Logs []PyxisEvent
+	}
+
+	type logSettings struct {
+		StartDateTime     time.Time
+		LastEventDateTime time.Time
+		PyxisName         string
+	}
+
+	p.logger.LogInfo("Loading Pyxis event logs")
+
+	//-- Pull logs from csv files
+	entries, err := os.ReadDir(filepath.Join(p.pathToData, pyxisEventLogsFolder))
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Error accessing Pyxis event save directory: %s", err.Error()))
+		return err
+	}
+
+	unmatchedLogs := []unmatchedLog{}
+	for _, entry := range entries {
+		file, err := os.Open(filepath.Join(p.pathToData, pyxisEventLogsFolder, entry.Name()))
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Error opening %s: %s", file.Name(), err.Error()))
+			continue
+		}
+		defer file.Close()
+
+		log := []PyxisEvent{}
+		gocsv.UnmarshalFile(file, &log)
+		unmatchedLogs = append(unmatchedLogs, unmatchedLog{
+			Name: strings.Split(entry.Name(), ".")[0],
+			Logs: log,
+		})
+	}
+
+	//-- Pull settings from json files
+	entries, err = os.ReadDir(filepath.Join(p.pathToData, pyxisEventLogSettingsFolder))
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Error accessing Pyxis event logs settings directory: %s", err.Error()))
+		return err
+	}
+
+	unmatchedSettings := []logSettings{}
+	for _, entry := range entries {
+		data, err := os.ReadFile(filepath.Join(p.pathToData, pyxisEventLogSettingsFolder, entry.Name()))
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Error reading %s: %s", entry.Name(), err.Error()))
+			continue
+		}
+
+		settings := logSettings{}
+		err = json.Unmarshal(data, &settings)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Error unmarshalling data from %s: %s", entry.Name(), err.Error()))
+			continue
+		}
+
+		unmatchedSettings = append(unmatchedSettings, settings)
+	}
+
+	//-- Merge unmatchedLogs and unmatchedSettings
+	pyxisEventLogs := []PyxisEventLog{}
+	matchedLogs := []unmatchedLog{}
+	matchedSettings := []logSettings{}
+
+	for i := range unmatchedLogs {
+		for j := range unmatchedSettings {
+			if unmatchedLogs[i].Name == unmatchedSettings[j].PyxisName {
+				pyxisEventLogs = append(pyxisEventLogs, PyxisEventLog{
+					Log:               unmatchedLogs[i].Logs,
+					StartDateTime:     unmatchedSettings[j].StartDateTime,
+					LastEventDateTime: unmatchedSettings[j].LastEventDateTime,
+					PyxisName:         unmatchedSettings[j].PyxisName,
+				})
+
+				matchedLogs = append(matchedLogs, unmatchedLogs[i])
+				matchedSettings = append(matchedSettings, unmatchedSettings[j])
+
+				break
+			}
+		}
+	}
+
+	//-- Check for unmatched logs and settings
+	if len(matchedLogs) != len(unmatchedLogs) ||
+		len(matchedSettings) != len(unmatchedSettings) {
+		p.logger.LogError("Error matching Pyxis logs and settings")
+	}
+
+	p.PyxisEventLogs = pyxisEventLogs
+	p.logger.LogInfo("Pyxis event logs loaded")
 	return nil
 }
