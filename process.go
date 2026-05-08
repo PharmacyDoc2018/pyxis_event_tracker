@@ -34,24 +34,6 @@ type ProcessState struct {
 	dbConnection   bool
 }
 
-func (p *ProcessState) findMissingEvents() {
-	for i := range p.PyxisEventLogs {
-		params := database.GetPyxisEventsForDeviceByDateRangeParams{
-			Device: p.PyxisEventLogs[i].PyxisName,
-			Start:  p.PyxisEventLogs[i].LastEventDateTime,
-			End:    time.Now(),
-		}
-
-		events, err := getPyxisEvents(p, params)
-		if err != nil {
-			fmt.Println(err.Error())
-			continue
-		}
-
-		p.parseEventsAndAdd(i, events)
-	}
-}
-
 type PyxisEvent struct {
 	ItemTransactionKey    uuid.UUID
 	UserName              string
@@ -300,6 +282,34 @@ func (p *ProcessState) createNewPyxisEventLog(pyxisName string, startDateTime ti
 	return nil
 }
 
+func (p *ProcessState) findMissingPyxisEvents() {
+	for i := range p.PyxisEventLogs {
+		params := database.GetPyxisEventsForDeviceByDateRangeParams{
+			Device: p.PyxisEventLogs[i].PyxisName,
+			Start:  p.PyxisEventLogs[i].LastEventDateTime,
+			End:    time.Now(),
+		}
+
+		events, err := getPyxisEvents(p, params) //-- logging handled in function
+		if err != nil {
+			fmt.Println(err.Error())
+			continue
+		}
+
+		p.parseEventsAndAdd(i, events)
+	}
+}
+
+func (p *ProcessState) startupLogsCheck() {
+	if p.dbConnection {
+		p.logger.LogInfo("Initiating startup logs check")
+		p.findMissingPyxisEvents()
+
+	} else {
+		p.logger.LogInfo("Startup log checks skipped - no database connection")
+	}
+}
+
 func initProcess() *ProcessState {
 	p := ProcessState{}
 
@@ -322,6 +332,7 @@ func initProcess() *ProcessState {
 
 	processLogger := initProcessLogger(processLogPath)
 	p.logger = processLogger
+	p.logger.LogInfo("Application Started")
 
 	err = p.loadPyxisEventLogs()
 	if err != nil {
@@ -332,12 +343,13 @@ func initProcess() *ProcessState {
 }
 
 func (p *ProcessState) exit() {
-	p.logger.LogInfo("Closing Application")
+	p.logger.LogInfo("Closing Application...")
 	p.savePyxisEventLogs()
 	p.cliConfig.Rl.Close()
-	p.logger.Close()
 	close(p.cacheStop)
 	time.Sleep(500 * time.Millisecond)
+	p.logger.LogInfo("Application Closed")
+	p.logger.Close()
 	os.Exit(0)
 }
 
