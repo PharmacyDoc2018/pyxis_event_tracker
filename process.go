@@ -312,11 +312,20 @@ func (p *ProcessState) startupLogsCheck() {
 
 func initProcess() *ProcessState {
 	p := ProcessState{}
+	connString := ""
+	processLogPath := ""
 
-	godotenv.Load(".env")
-	connString := os.Getenv("CONNSTRING")
-	processLogPath := os.Getenv("PROCESSLOGPATH")
+	err := godotenv.Load(".env")
+	if err != nil {
+		err := p.initialLaunchSetup()
+		if err != nil {
+			fmt.Printf("ERROR. first time initilization process not complete: %s\n", err.Error())
+		}
+		godotenv.Load(".env")
+	}
 
+	connString = os.Getenv("CONNSTRING")
+	processLogPath = os.Getenv("PROCESSLOGPATH")
 	p.pathToData = os.Getenv("DATAPATH")
 
 	db, err := sql.Open("sqlserver", connString)
@@ -497,4 +506,45 @@ func (p *ProcessState) loadPyxisEventLogs() error {
 	p.PyxisEventLogs = pyxisEventLogs
 	p.logger.LogInfo("Pyxis event logs loaded")
 	return nil
+}
+
+const defaultEnv = `CONNSTRING=""
+PROCESSLOGPATH="./logs/process_log.txt"
+DATAPATH="./data/"
+`
+
+func (p *ProcessState) initialLaunchSetup() error {
+	env, err := os.OpenFile(".env", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer env.Close()
+
+	_, err = env.WriteString(defaultEnv)
+	if err != nil {
+		return err
+	}
+
+	err = os.Mkdir("./logs/", 0755)
+	if err != nil {
+		return err
+	}
+
+	err = os.Mkdir("./data/", 0755)
+	if err != nil {
+		return err
+	}
+
+	err = os.Mkdir("./data/log_settings/", 0755)
+	if err != nil {
+		return err
+	}
+
+	err = os.Mkdir("./data/pyxis_event_logs/", 0755)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
 }
