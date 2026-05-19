@@ -36,3 +36,19 @@ func parseDate(dateString string) (time.Time, error) {
 
 	return time.Time{}, fmt.Errorf("error. %s not a valid date format", dateString)
 }
+
+func timeToday() time.Time {
+	now := time.Now()
+	today := time.Date(
+		now.Year(),
+		now.Month(),
+		now.Day(),
+		0,
+		0,
+		0,
+		0,
+		now.Location(),
+	)
+
+	return today
+}

@@ -293,7 +293,7 @@ func (p *ProcessState) findMissingPyxisEvents() {
 		params := database.GetPyxisEventsForDeviceByDateRangeParams{
 			Device: p.PyxisEventLogs[i].PyxisName,
 			Start:  startTime,
-			End:    time.Now(),
+			End:    timeToday(), //--time today at midnight for cache if duplicate call
 		}
 
 		events, err := getPyxisEvents(p, params) //-- logging handled in function
