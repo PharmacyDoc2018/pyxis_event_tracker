@@ -52,3 +52,9 @@ func timeToday() time.Time {
 
 	return today
 }
+
+func isSameDay(timeOne, timeTwo time.Time) bool {
+	return timeOne.Year() == timeTwo.Year() &&
+		timeOne.Month() == timeTwo.Month() &&
+		timeOne.Day() == timeTwo.Day()
+}

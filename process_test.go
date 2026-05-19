@@ -325,3 +325,43 @@ func TestCache(t *testing.T) {
 
 	close(p.cacheStop)
 }
+
+func TestFunctions(t *testing.T) {
+	helper := func(f func(string) (time.Time, error), dateString string) time.Time {
+		dateTime, err := f(dateString)
+		if err != nil {
+			t.Errorf("error parsing time %s", err.Error())
+		}
+		return dateTime
+	}
+
+	tests := []struct {
+		dateOne        time.Time
+		dateTwo        time.Time
+		expectedResult bool
+	}{
+		{
+			time.Now(),
+			time.Now(),
+			true,
+		},
+		{
+			helper(parseDate, "1/2/2026"),
+			helper(parseDate, "1/2/2026"),
+			true,
+		},
+		{
+			helper(parseDate, "1/1/2026"),
+			helper(parseDate, "1/2/2026"),
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		result := isSameDay(test.dateOne, test.dateTwo)
+		if result != test.expectedResult {
+			t.Errorf("fail. isSameDay result incorrect. Expected: %t. Actual: %t", test.expectedResult, result)
+		}
+	}
+
+}

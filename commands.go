@@ -61,6 +61,10 @@ func (p *ProcessState) setupCommands() {
 			return err
 		}
 
+		if p.dbConnection {
+			p.findMissingPyxisEvents()
+		}
+
 		return nil
 
 	}, cli.CommandArg{
