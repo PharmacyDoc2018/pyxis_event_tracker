@@ -284,9 +284,15 @@ func (p *ProcessState) createNewPyxisEventLog(pyxisName string, startDateTime ti
 
 func (p *ProcessState) findMissingPyxisEvents() {
 	for i := range p.PyxisEventLogs {
+		startTime := time.Time{}
+		if p.PyxisEventLogs[i].LastEventDateTime.IsZero() {
+			startTime = p.PyxisEventLogs[i].StartDateTime
+		} else {
+			startTime = p.PyxisEventLogs[i].LastEventDateTime
+		}
 		params := database.GetPyxisEventsForDeviceByDateRangeParams{
 			Device: p.PyxisEventLogs[i].PyxisName,
-			Start:  p.PyxisEventLogs[i].LastEventDateTime,
+			Start:  startTime,
 			End:    time.Now(),
 		}
 
