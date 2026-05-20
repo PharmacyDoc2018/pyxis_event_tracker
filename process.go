@@ -19,6 +19,7 @@ import (
 )
 
 const cacheInterval = 60 * time.Minute
+const minPyxisEventRecheckInterval = 24 * time.Hour
 const pyxisEventLogsFolder = "pyxis_event_logs"
 const pyxisEventLogSettingsFolder = "log_settings"
 
@@ -290,10 +291,20 @@ func (p *ProcessState) findMissingPyxisEvents() {
 		} else {
 			startTime = p.PyxisEventLogs[i].LastEventDateTime
 		}
+
+		endTime := timeToday() //--time today at midnight for cache if duplicate call
+
+		if endTime.Sub(startTime) < minPyxisEventRecheckInterval {
+			p.logger.LogInfo(fmt.Sprintf("Last Pyxis event for %s on %s, less than 24 hours ago. Finding missing Pyxis events skipped",
+				p.PyxisEventLogs[i].PyxisName,
+				startTime.Format("2006-01-02 1504")))
+			continue
+		}
+
 		params := database.GetPyxisEventsForDeviceByDateRangeParams{
 			Device: p.PyxisEventLogs[i].PyxisName,
 			Start:  startTime,
-			End:    timeToday(), //--time today at midnight for cache if duplicate call
+			End:    endTime,
 		}
 
 		events, err := getPyxisEvents(p, params) //-- logging handled in function
