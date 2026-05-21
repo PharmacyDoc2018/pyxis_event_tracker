@@ -11,6 +11,19 @@ type processLogger struct {
 	logger *log.Logger
 }
 
+type logError struct {
+	errMessage string
+	logMessage string
+}
+
+func (l *logError) Error() string {
+	return l.errMessage
+}
+
+func (l *logError) LogError() string {
+	return l.logMessage
+}
+
 func (p processLogger) LogInfo(message string) {
 	prefix := "INFO: "
 	p.logger.Println(prefix + message)
