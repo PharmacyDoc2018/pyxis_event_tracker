@@ -42,7 +42,7 @@ type PyxisEventLog struct {
 	PyxisName         string
 }
 
-func (p *ProcessState) cleanUpPyxisEventLog(index int) error {
+func (p *Process) cleanUpPyxisEventLog(index int) error {
 	if index >= len(p.PyxisEventLogs) {
 		err := fmt.Errorf("error. index %d out of range. Number of Pyxis event logs: %d", index, len(p.PyxisEventLogs))
 		p.logger.LogError(fmt.Sprintf("cleanUpPyxisEventLog was called with an invalid index: %s", err.Error()))
@@ -94,7 +94,7 @@ func (p *ProcessState) cleanUpPyxisEventLog(index int) error {
 	return nil
 }
 
-func (p *ProcessState) addPyxisEvents(index int, events []PyxisEvent) error {
+func (p *Process) addPyxisEvents(index int, events []PyxisEvent) error {
 	if index >= len(p.PyxisEventLogs) {
 		err := fmt.Errorf("error. index %d out of range. Number of Pyxis event logs: %d", index, len(p.PyxisEventLogs))
 		p.logger.LogError(fmt.Sprintf("addPyxisEvents was called with an invalid index: %s", err.Error()))
@@ -125,7 +125,7 @@ func (p *PyxisEventLog) lastEventDateString() string {
 	return p.LastEventDateTime.Format("2006-01-02 15:04")
 }
 
-func (p *ProcessState) parseEventsAndAdd(index int, events []database.PyxisEventResponse) {
+func (p *Process) parseEventsAndAdd(index int, events []database.PyxisEventResponse) {
 	parsedEvents := []PyxisEvent{}
 
 	for _, event := range events {
@@ -241,7 +241,7 @@ func (p *ProcessState) parseEventsAndAdd(index int, events []database.PyxisEvent
 
 }
 
-func (p *ProcessState) createNewPyxisEventLog(pyxisName string, startDateTime time.Time) error {
+func (p *Process) createNewPyxisEventLog(pyxisName string, startDateTime time.Time) error {
 	for _, pyxisLog := range p.PyxisEventLogs {
 		if pyxisName == pyxisLog.PyxisName {
 			err := fmt.Errorf("error. %s already exists", pyxisName)
@@ -262,7 +262,7 @@ func (p *ProcessState) createNewPyxisEventLog(pyxisName string, startDateTime ti
 	return nil
 }
 
-func (p *ProcessState) findMissingPyxisEvents() {
+func (p *Process) findMissingPyxisEvents() {
 	for i := range p.PyxisEventLogs {
 		startTime := time.Time{}
 		if p.PyxisEventLogs[i].LastEventDateTime.IsZero() {
@@ -296,7 +296,7 @@ func (p *ProcessState) findMissingPyxisEvents() {
 	}
 }
 
-func (p *ProcessState) savePyxisEventLogs() error {
+func (p *Process) savePyxisEventLogs() error {
 	for _, pyxisEventLog := range p.PyxisEventLogs {
 		p.logger.LogInfo(fmt.Sprintf("Saving %s Pyxis event log", pyxisEventLog.PyxisName))
 		logFile, err := os.OpenFile(filepath.Join(p.pathToData, pyxisEventLogsFolder, pyxisEventLog.PyxisName+".csv"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
@@ -345,7 +345,7 @@ func (p *ProcessState) savePyxisEventLogs() error {
 	return nil
 }
 
-func (p *ProcessState) loadPyxisEventLogs() error {
+func (p *Process) loadPyxisEventLogs() error {
 	type unmatchedLog struct {
 		Name string
 		Logs []PyxisEvent

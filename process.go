@@ -17,10 +17,11 @@ const minPyxisEventRecheckInterval = 24 * time.Hour
 const pyxisEventLogsFolder = "pyxis_event_logs"
 const pyxisEventLogSettingsFolder = "log_settings"
 
-type ProcessState struct {
+type Process struct {
 	PyxisEventLogs []PyxisEventLog
 	pathToData     string
 	logger         processLogger
+	state          *processState
 	erxItemIdLinks *ERxItemIdLinks
 	db             *sql.DB
 	dbq            *database.Queries
@@ -30,8 +31,8 @@ type ProcessState struct {
 	dbConnection   bool
 }
 
-func (p *ProcessState) startupLogsCheck() {
-	if p.dbConnection {
+func (p *Process) startupLogsCheck() {
+	if p.state.DbConnectionOkay() {
 		p.logger.LogInfo("Initiating startup logs check")
 		p.findMissingPyxisEvents()
 
@@ -40,8 +41,10 @@ func (p *ProcessState) startupLogsCheck() {
 	}
 }
 
-func initProcess() *ProcessState {
-	p := ProcessState{}
+func initProcess() *Process {
+	p := Process{}
+	p.state = initProcessState()
+
 	connString := ""
 	processLogPath := ""
 
@@ -61,6 +64,8 @@ func initProcess() *ProcessState {
 	db, err := sql.Open("sqlserver", connString)
 	if err != nil {
 		fmt.Printf("error creating connection pool: %s\n ", err.Error())
+	} else {
+		p.state.DbConnectionSuccessful()
 	}
 	p.db = db
 
@@ -76,26 +81,42 @@ func initProcess() *ProcessState {
 	err = p.loadPyxisEventLogs()
 	if err != nil {
 		fmt.Printf("error loading Pyxis event logs: %s\n", err.Error())
-		// need to halt startup and safely exit
+	} else {
+		p.state.PyxisEventLogsLoadSuccessful()
 	}
 
-	p.erxItemIdLinks.Map = make(map[string]ERxItemIdLink)
+	p.erxItemIdLinks = initERxItemIdLink()
 	err = p.loadERxItemIdLinks()
 	if err != nil {
 		fmt.Println(err.Error())
 		// need to halt startup and safely exit
+	} else {
+		p.state.ERxItemIdLinksSuccessful()
 	}
 
 	return &p
 }
 
-func (p *ProcessState) exit() {
+func (p *Process) exit() {
 	p.logger.LogInfo("Closing Application...")
-	p.savePyxisEventLogs()
+
+	if p.state.PyxisEventLogsLoadedOkay() {
+		p.savePyxisEventLogs()
+	} else {
+		p.logger.LogInfo("Pyxis event logs not being saved due to previous load error")
+	}
+
+	if p.state.ERxItemIdLinksOkay() {
+		p.saveERxItemIdLinks()
+	} else {
+		p.logger.LogInfo("ERx - ItemId links not being saved due to previous load error")
+	}
+
 	p.cliConfig.Rl.Close()
 	close(p.cacheStop)
 	time.Sleep(500 * time.Millisecond)
 	p.logger.LogInfo("Application Closed")
+	p.logger.EndSpace()
 	p.logger.Close()
 	os.Exit(0)
 }
@@ -105,7 +126,7 @@ PROCESSLOGPATH="./logs/process_log.txt"
 DATAPATH="./data/"
 `
 
-func (p *ProcessState) initialLaunchSetup() error {
+func (p *Process) initialLaunchSetup() error {
 	env, err := os.OpenFile(".env", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
@@ -126,6 +147,12 @@ func (p *ProcessState) initialLaunchSetup() error {
 	if err != nil {
 		return err
 	}
+
+	f, err := os.OpenFile("ERxItemIdLinks.json", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	f.Close()
 
 	err = os.Mkdir("./data/log_settings/", 0755)
 	if err != nil {

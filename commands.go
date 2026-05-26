@@ -6,7 +6,7 @@ import (
 	"github.com/PharmacyDoc2018/pyxis_event_tracker/cli"
 )
 
-func (p *ProcessState) setupCommands() {
+func (p *Process) setupCommands() {
 	p.cliConfig.AddCommand("hello", func([]cli.CommandArg) error {
 		fmt.Println("Hello, World!")
 		p.logger.LogInfo("Command hello executed")

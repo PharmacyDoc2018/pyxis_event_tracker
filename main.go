@@ -14,12 +14,11 @@ func main() {
 	fmt.Println("Attempting to connect to database...")
 	err := p.db.Ping()
 	if err != nil {
-		p.dbConnection = false
 		fmt.Println("connection failed!")
 		fmt.Println("warning: no database connection")
+		p.state.DbConnectionFail()
 		p.logger.LogError("Connection to database not successful")
 	} else {
-		p.dbConnection = true
 		fmt.Println("connection successful")
 		p.logger.LogInfo("Connection to database successful")
 	}

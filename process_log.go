@@ -34,6 +34,10 @@ func (p processLogger) LogError(message string) {
 	p.logger.Println(prefix + message)
 }
 
+func (p processLogger) EndSpace() {
+	p.logger.Println("---")
+}
+
 func (p processLogger) Close() {
 	p.file.Close()
 }

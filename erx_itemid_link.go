@@ -34,7 +34,13 @@ func (e *ERxItemIdLinks) Add(erx, itemId string) error {
 	return nil
 }
 
-func (p *ProcessState) saveERxItemIdLinks() error {
+func initERxItemIdLink() *ERxItemIdLinks {
+	e := ERxItemIdLinks{}
+	e.Map = map[string]ERxItemIdLink{}
+	return &e
+}
+
+func (p *Process) saveERxItemIdLinks() error {
 	p.logger.LogInfo("Saving ERxItemIdLinks")
 
 	file, err := os.OpenFile(filepath.Join(p.pathToData, ERxItemIdLinksFileName), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
@@ -61,7 +67,7 @@ func (p *ProcessState) saveERxItemIdLinks() error {
 
 }
 
-func (p *ProcessState) loadERxItemIdLinks() error {
+func (p *Process) loadERxItemIdLinks() error {
 	p.logger.LogInfo("Loading ERxItemIdLinks")
 
 	data, err := os.ReadFile(filepath.Join(p.pathToData, ERxItemIdLinksFileName))
