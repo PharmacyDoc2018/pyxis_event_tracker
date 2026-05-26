@@ -148,7 +148,11 @@ func (p *Process) initialLaunchSetup() error {
 		return err
 	}
 
-	f, err := os.OpenFile("ERxItemIdLinks.json", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	f, err := os.OpenFile("./data/ERxItemIdLinks.json", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	_, err = f.WriteString("{}")
 	if err != nil {
 		return err
 	}
