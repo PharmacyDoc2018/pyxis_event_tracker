@@ -75,4 +75,12 @@ func (p *Process) setupCommands() {
 		Required: true,
 	})
 
+	p.cliConfig.AddCommand("status", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("Status command executed")
+		mode := p.state.Mode()
+		fmt.Println(mode)
+		p.logger.LogInfo(fmt.Sprintf("Current mode: %d", mode))
+		return nil
+	})
+
 }
