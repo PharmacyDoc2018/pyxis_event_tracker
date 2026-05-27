@@ -62,7 +62,6 @@ func (p *Process) saveERxItemIdLinks() error {
 		return err
 	}
 
-	p.logger.LogInfo("ERxItemIdLinks saved")
 	return nil
 
 }
@@ -72,8 +71,32 @@ func (p *Process) loadERxItemIdLinks() error {
 
 	data, err := os.ReadFile(filepath.Join(p.pathToData, ERxItemIdLinksFileName))
 	if err != nil {
-		p.logger.LogError(fmt.Sprintf("Error. Unable to read %s: %s", ERxItemIdLinksFileName, err.Error()))
-		return err
+		if err.Error() == "open data/ERxItemIdLinks.json: no such file or directory" {
+			p.logger.LogInfo("ERxItemIdLinks.json not found. Attempting to create file")
+			f, e := os.OpenFile("./data/ERxItemIdLinks.json", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+			if e != nil {
+				p.logger.LogError(fmt.Sprintf("Error. Unable to read %s: %s. Unable to create file: %s",
+					ERxItemIdLinksFileName,
+					err.Error(),
+					e.Error()))
+				return fmt.Errorf("%s - %s", err.Error(), e.Error())
+			}
+
+			_, e = f.WriteString("{}")
+			if e != nil {
+				p.logger.LogError(fmt.Sprintf("Error. Unable to read %s: %s. File created. Unable to write to file: %s",
+					ERxItemIdLinksFileName,
+					err.Error(),
+					e.Error()))
+				return fmt.Errorf("%s - %s", err.Error(), e.Error())
+			}
+		} else {
+			p.logger.LogError(fmt.Sprintf("Error. Unable to read %s: %s", ERxItemIdLinksFileName, err.Error()))
+			return err
+
+		}
+		p.logger.LogInfo("ERxItemIdLinks.json file created")
+		data = []byte("{}")
 	}
 
 	err = json.Unmarshal(data, p.erxItemIdLinks)
