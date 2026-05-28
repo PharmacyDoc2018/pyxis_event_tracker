@@ -18,7 +18,7 @@ type ERxItemIdLinks struct {
 	Map map[string]ERxItemIdLink
 }
 
-func (e *ERxItemIdLinks) Add(erx, itemId string) error {
+func (e *ERxItemIdLinks) Add(erx, itemId string) *logError {
 	if _, okay := e.Map[erx]; okay {
 		return &logError{
 			errMessage: fmt.Sprintf("error. link for ERx %s already exists", erx),

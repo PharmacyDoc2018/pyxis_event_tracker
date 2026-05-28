@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/PharmacyDoc2018/pyxis_event_tracker/cli"
 )
@@ -81,6 +82,62 @@ func (p *Process) setupCommands() {
 		fmt.Println(mode)
 		p.logger.LogInfo(fmt.Sprintf("Current mode: %d", mode))
 		return nil
+	})
+
+	p.cliConfig.AddCommand("add ERxItemId link", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("add ERxItemId link command executed")
+
+		erx := ""
+		itemId := ""
+
+		for _, arg := range args {
+			switch arg.Name {
+			case "erx":
+				erx = arg.Val
+
+			case "itemid":
+				itemId = arg.Val
+			}
+		}
+
+		//-- Check for blank args
+		if erx == "" {
+			p.logger.LogError("Command failed: erx cannot be blank")
+			return fmt.Errorf("error. erx cannot be blank")
+		}
+		if itemId == "" {
+			p.logger.LogError("Command failed: itemid cannot be blank")
+			return fmt.Errorf("error. itemid cannot be blank")
+		}
+
+		//-- Check for letters in args
+		_, err := strconv.Atoi(erx)
+		if err != nil {
+			p.logger.LogError("Command failed: erx can only contain numbers")
+			return fmt.Errorf("error. erx can only contain numbers")
+		}
+		_, err = strconv.Atoi(itemId)
+		if err != nil {
+			p.logger.LogError("Command failed: itemid can only contain numbers")
+			return fmt.Errorf("error. itemid can only contain numbers")
+		}
+
+		//-- Call method to add link
+		logErr := p.erxItemIdLinks.Add(erx, itemId)
+		if err != nil {
+			p.logger.LogError(logErr.LogError())
+			return logErr
+		}
+		p.logger.LogInfo(fmt.Sprintf("Link created. ItemId %s now links to ERx %s", itemId, erx))
+		fmt.Println("link created")
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "erx",
+		Required: true,
+	}, cli.CommandArg{
+		Name:     "itemid",
+		Required: true,
 	})
 
 }
