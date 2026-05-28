@@ -124,7 +124,7 @@ func (p *Process) setupCommands() {
 
 		//-- Call method to add link
 		logErr := p.erxItemIdLinks.Add(erx, itemId)
-		if err != nil {
+		if logErr != nil {
 			p.logger.LogError(logErr.LogError())
 			return logErr
 		}
