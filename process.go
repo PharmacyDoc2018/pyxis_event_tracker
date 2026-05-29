@@ -18,17 +18,18 @@ const pyxisEventLogsFolder = "pyxis_event_logs"
 const pyxisEventLogSettingsFolder = "log_settings"
 
 type Process struct {
-	PyxisEventLogs []PyxisEventLog
-	pathToData     string
-	logger         processLogger
-	state          *processState
-	erxItemIdLinks *ERxItemIdLinks
-	db             *sql.DB
-	dbq            *database.Queries
-	cliConfig      *cli.Config
-	cache          *cache.Cache
-	cacheStop      chan struct{}
-	dbConnection   bool
+	PyxisEventLogs     []PyxisEventLog
+	pathToData         string
+	logger             processLogger
+	state              *processState
+	erxItemIdLinks     *ERxItemIdLinks
+	departmentCoverage *DepartmentCoverage
+	db                 *sql.DB
+	dbq                *database.Queries
+	cliConfig          *cli.Config
+	cache              *cache.Cache
+	cacheStop          chan struct{}
+	dbConnection       bool
 }
 
 func (p *Process) startupLogsCheck() {
