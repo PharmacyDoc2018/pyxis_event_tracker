@@ -34,6 +34,30 @@ func (e *ERxItemIdLinks) Add(erx, itemId string) *logError {
 	return nil
 }
 
+func (e *ERxItemIdLinks) Remove(erx string) *logError {
+	if _, okay := e.Map[erx]; !okay {
+		return &logError{
+			errMessage: fmt.Sprintf("error. ERx %s not currently linked to an itemId", erx),
+			logMessage: fmt.Sprintf("Error. ERx %s not currently linked to an itemId", erx),
+		}
+	}
+
+	delete(e.Map, erx)
+	return nil
+}
+
+func (e *ERxItemIdLinks) GetItemId(erx string) (string, *logError) {
+	itemId, okay := e.Map[erx]
+	if !okay {
+		return "", &logError{
+			errMessage: fmt.Sprintf("error. link for erx %s not found", erx),
+			logMessage: fmt.Sprintf("Error. Link for ERx %s not found", erx),
+		}
+	}
+
+	return itemId.ItemID, nil
+}
+
 func initERxItemIdLink() *ERxItemIdLinks {
 	e := ERxItemIdLinks{}
 	e.Map = map[string]ERxItemIdLink{}

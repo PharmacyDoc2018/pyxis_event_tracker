@@ -140,4 +140,42 @@ func (p *Process) setupCommands() {
 		Required: true,
 	})
 
+	p.cliConfig.AddCommand("remove ERxItemId link", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("Remove ERxItemId link command executed")
+
+		erx := ""
+		for _, arg := range args {
+			switch arg.Name {
+			case "erx":
+				erx = arg.Val
+			}
+		}
+
+		if erx == "" {
+			err := fmt.Errorf("error. erx cannot be blank")
+			p.logger.LogError("Command failed: " + err.Error())
+			return err
+		}
+
+		itemId, logErr := p.erxItemIdLinks.GetItemId(erx)
+		if logErr != nil {
+			p.logger.LogError(logErr.logMessage)
+			return logErr
+		}
+
+		logErr = p.erxItemIdLinks.Remove(erx)
+		if logErr != nil {
+			p.logger.LogError(logErr.logMessage)
+			return logErr
+		}
+
+		p.logger.LogInfo(fmt.Sprintf("ERx %s unlinked from ItemId %s", erx, itemId))
+		fmt.Printf("erx %s unlinked from itemid %s\n", erx, itemId)
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "erx",
+		Required: true,
+	})
+
 }
