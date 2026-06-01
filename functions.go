@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -57,4 +58,9 @@ func isSameDay(timeOne, timeTwo time.Time) bool {
 	return timeOne.Year() == timeTwo.Year() &&
 		timeOne.Month() == timeTwo.Month() &&
 		timeOne.Day() == timeTwo.Day()
+}
+
+func isNumeric(s string) bool {
+	_, err := strconv.Atoi(s)
+	return err == nil
 }

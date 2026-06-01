@@ -178,4 +178,72 @@ func (p *Process) setupCommands() {
 		Required: true,
 	})
 
+	p.cliConfig.AddCommand("add department coverage", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("add department coverage command executed")
+
+		pyxisName := ""
+		deptID := ""
+		deptName := ""
+
+		for _, arg := range args {
+			switch arg.Name {
+			case "pyxis":
+				pyxisName = arg.Val
+
+			case "deptID":
+				deptID = arg.Val
+
+			case "dept_name":
+				deptName = arg.Val
+			}
+		}
+
+		if pyxisName == "" {
+			err := fmt.Errorf("error. pyxis cannot be blank")
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
+			return err
+		}
+
+		if deptID == "" {
+			err := fmt.Errorf("error. deptID cannot be blank")
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
+			return err
+		}
+
+		if !isNumeric(deptID) {
+			err := fmt.Errorf("error. deptID must contain only numbers")
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
+			return err
+		}
+
+		if deptName == "" {
+			err := fmt.Errorf("error. dept_name cannot be blank")
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
+			return err
+		}
+
+		department := Department{
+			ID:   deptID,
+			Name: deptName,
+		}
+
+		logErr := p.departmentCoverage.Add(pyxisName, department)
+		if logErr != nil {
+			p.logger.LogError("Command failed: " + logErr.logMessage)
+			return logErr
+		}
+
+		p.logger.LogInfo(fmt.Sprintf("Department %s added to %s's covered departments", deptName, pyxisName))
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "pyxis",
+		Required: true,
+	}, cli.CommandArg{
+		Name:     "deptID",
+		Required: true,
+	}, cli.CommandArg{
+		Name: "dept_name",
+	})
+
 }

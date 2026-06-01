@@ -56,7 +56,7 @@ func (d *DepartmentCoverage) GetAllCoveredDepartments() ([]Department, *logError
 }
 
 func (d *DepartmentCoverage) Add(pyxisName string, department Department) *logError {
-	if _, okay := d.Map[pyxisName]; okay {
+	if _, okay := d.Map[pyxisName]; !okay {
 		d.Map[pyxisName] = make(map[string]Department)
 	}
 
@@ -90,4 +90,10 @@ func (d *DepartmentCoverage) RemovePyxisDepartmentLink(pyxisName string, departm
 
 	delete(d.Map[pyxisName], deptID)
 	return nil
+}
+
+func initDepartmentCoverage() *DepartmentCoverage {
+	d := DepartmentCoverage{}
+	d.Map = make(map[string]map[string]Department)
+	return &d
 }

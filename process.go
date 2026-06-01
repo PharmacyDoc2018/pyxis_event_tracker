@@ -95,6 +95,8 @@ func initProcess() *Process {
 		p.state.ERxItemIdLinksSuccessful()
 	}
 
+	p.departmentCoverage = initDepartmentCoverage()
+
 	return &p
 }
 
