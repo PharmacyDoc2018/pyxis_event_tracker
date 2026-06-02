@@ -108,6 +108,31 @@ func (c *Config) parseInput() (string, []CommandArg, error) {
 		}
 	}
 
+	//-- Concatenate multi word args
+	tempArgs := argStrings
+	argStrings = []string{}
+	for i := 0; i < len(tempArgs); i++ {
+		if startsWithQuote, wordNoQuote := isStartQuoteWord(tempArgs[i]); !startsWithQuote {
+			argStrings = append(argStrings, tempArgs[i])
+		} else {
+			argSlices := []string{wordNoQuote}
+			i++
+			endsWithQuote, wordNoEndQuote := isEndQuoteWord(tempArgs[i])
+			for !endsWithQuote && i+1 < len(tempArgs) {
+				argSlices = append(argSlices, tempArgs[i])
+				i++
+				endsWithQuote, wordNoEndQuote = isEndQuoteWord(tempArgs[i])
+			}
+			if !endsWithQuote {
+				argSlices = append(argSlices, tempArgs[i])
+			} else {
+				argSlices = append(argSlices, wordNoEndQuote)
+
+			}
+			argStrings = append(argStrings, strings.Join(argSlices, " "))
+		}
+	}
+
 	if command == "" {
 		return "", nil, fmt.Errorf("error. command not found")
 	}
@@ -243,4 +268,33 @@ func cleanInput(text string) []string {
 
 func cleanInputAndStore(c *Config, input string) {
 	c.lastInput = cleanInput(input)
+}
+
+func isStartQuoteWord(word string) (bool, string) {
+	if !strings.Contains(word, "\"") {
+		return false, ""
+	}
+
+	wordSlices := []rune(word)
+	if wordSlices[0] != '"' {
+		return false, ""
+	}
+
+	wordNoQuote := string(wordSlices[1:])
+	return true, wordNoQuote
+}
+
+func isEndQuoteWord(word string) (bool, string) {
+	if !strings.Contains(word, "\"") {
+		return false, ""
+	}
+
+	wordSlices := []rune(word)
+	lastIndex := len(wordSlices) - 1
+	if wordSlices[lastIndex] != '"' {
+		return false, ""
+	}
+
+	wordNoQuote := string(wordSlices[:lastIndex])
+	return true, wordNoQuote
 }

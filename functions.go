@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -63,4 +64,18 @@ func isSameDay(timeOne, timeTwo time.Time) bool {
 func isNumeric(s string) bool {
 	_, err := strconv.Atoi(s)
 	return err == nil
+}
+
+func isStartQuoteWord(word string) (bool, string) {
+	if !strings.Contains(word, "\"") {
+		return false, ""
+	}
+
+	wordSlices := []rune(word)
+	if wordSlices[0] != '"' {
+		return false, ""
+	}
+
+	wordNoQuote := string(wordSlices[1:])
+	return true, wordNoQuote
 }
