@@ -11,21 +11,8 @@ func main() {
 	p := initProcess()
 	defer p.db.Close()
 
-	fmt.Println("Attempting to connect to database...")
-	err := p.db.Ping()
-	if err != nil {
-		fmt.Println("connection failed!")
-		fmt.Println("warning: no database connection")
-		p.state.DbConnectionFail()
-		p.logger.LogError("Connection to database not successful")
-	} else {
-		fmt.Println("connection successful")
-		p.logger.LogInfo("Connection to database successful")
-	}
-
 	p.cliConfig = cli.InitConfig()
 	p.setupCommands()
-	p.startupLogsCheck()
 
 	for {
 		line, err := p.cliConfig.Rl.Readline()

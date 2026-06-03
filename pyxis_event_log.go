@@ -296,8 +296,13 @@ func (p *Process) findMissingPyxisEvents() {
 	}
 }
 
-func (p *Process) savePyxisEventLogs() error {
-	for _, pyxisEventLog := range p.PyxisEventLogs {
+func (p *Process) unloadPyxisEventLog(index int) {
+	p.PyxisEventLogs[index].Log = []PyxisEvent{}
+	p.state.PyxisEventLogUnloaded(p.PyxisEventLogs[index].PyxisName)
+}
+
+func (p *Process) saveAndUnloadPyxisEventLogs() error {
+	for i, pyxisEventLog := range p.PyxisEventLogs {
 		p.logger.LogInfo(fmt.Sprintf("Saving %s Pyxis event log", pyxisEventLog.PyxisName))
 		logFile, err := os.OpenFile(filepath.Join(p.pathToData, pyxisEventLogsFolder, pyxisEventLog.PyxisName+".csv"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
@@ -340,9 +345,53 @@ func (p *Process) savePyxisEventLogs() error {
 			p.logger.LogError(fmt.Sprintf("Error saving %s Pyxis settings: %s", pyxisEventLog.PyxisName, err.Error()))
 			return err
 		}
+
+		p.unloadPyxisEventLog(i)
 	}
 
 	return nil
+}
+
+func (p *Process) loadPyxisEventlog(pyxis string) error {
+	type logSettings struct {
+		StartDateTime     time.Time
+		LastEventDateTime time.Time
+		PyxisName         string
+	}
+
+	file, err := os.Open(filepath.Join(p.pathToData, pyxisEventLogsFolder, pyxis+".csv"))
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Error. Unable to load %s Pyxis event log: %s", pyxis, err.Error()))
+		return err
+	}
+	defer file.Close()
+
+	log := []PyxisEvent{}
+	gocsv.UnmarshalFile(file, &log)
+
+	data, err := os.ReadFile(filepath.Join(p.pathToData, pyxisEventLogSettingsFolder, pyxis+".json"))
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Error. Unable to read %s Pyxis event log settings: %s", pyxis, err.Error()))
+		return err
+	}
+
+	settings := logSettings{}
+	err = json.Unmarshal(data, &settings)
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Error unmarshalling settings data for %s: %s", pyxis, err.Error()))
+	}
+
+	pyxisEventLog := PyxisEventLog{
+		Log:               log,
+		StartDateTime:     settings.StartDateTime,
+		LastEventDateTime: settings.LastEventDateTime,
+		PyxisName:         pyxis,
+	}
+
+	p.PyxisEventLogs = append(p.PyxisEventLogs, pyxisEventLog)
+	p.state.PyxisEventLogLoaded(pyxis)
+	return nil
+
 }
 
 func (p *Process) loadPyxisEventLogs() error {
@@ -436,8 +485,21 @@ func (p *Process) loadPyxisEventLogs() error {
 		len(matchedSettings) != len(unmatchedSettings) {
 		p.logger.LogError("Error matching Pyxis logs and settings")
 	}
+	//--
 
 	p.PyxisEventLogs = pyxisEventLogs
+
+	//-- Update process state for loaded Pyxis event logs
+	for _, log := range p.PyxisEventLogs {
+		logErr := p.state.PyxisEventLogLoaded(log.PyxisName)
+		if logErr != nil {
+			p.logger.LogError(logErr.logMessage)
+			return logErr
+		}
+	}
+	p.state.PyxisEventLogsLoadSuccessful()
+	//--
+
 	p.logger.LogInfo("Pyxis event logs loaded")
 	return nil
 }

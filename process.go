@@ -62,6 +62,10 @@ func initProcess() *Process {
 	processLogPath = os.Getenv("PROCESSLOGPATH")
 	p.pathToData = os.Getenv("DATAPATH")
 
+	processLogger := initProcessLogger(processLogPath)
+	p.logger = processLogger
+	p.logger.LogInfo("Application Started")
+
 	db, err := sql.Open("sqlserver", connString)
 	if err != nil {
 		fmt.Printf("error creating connection pool: %s\n ", err.Error())
@@ -75,9 +79,17 @@ func initProcess() *Process {
 	p.cacheStop = make(chan struct{})
 	p.cache = cache.NewCache(cacheInterval, p.cacheStop)
 
-	processLogger := initProcessLogger(processLogPath)
-	p.logger = processLogger
-	p.logger.LogInfo("Application Started")
+	fmt.Println("Attempting to connect to database...")
+	err = p.db.Ping()
+	if err != nil {
+		fmt.Println("connection failed!")
+		fmt.Println("warning: no database connection")
+		p.state.DbConnectionFail()
+		p.logger.LogError("Connection to database not successful")
+	} else {
+		fmt.Println("connection successful")
+		p.logger.LogInfo("Connection to database successful")
+	}
 
 	err = p.loadPyxisEventLogs()
 	if err != nil {
@@ -90,12 +102,14 @@ func initProcess() *Process {
 	err = p.loadERxItemIdLinks()
 	if err != nil {
 		fmt.Println(err.Error())
-		// need to halt startup and safely exit
 	} else {
 		p.state.ERxItemIdLinksSuccessful()
 	}
 
 	p.departmentCoverage = initDepartmentCoverage()
+
+	p.startupLogsCheck()
+	p.saveAndUnloadPyxisEventLogs()
 
 	return &p
 }
@@ -104,7 +118,7 @@ func (p *Process) exit() {
 	p.logger.LogInfo("Closing Application...")
 
 	if p.state.PyxisEventLogsLoadedOkay() {
-		p.savePyxisEventLogs()
+		p.saveAndUnloadPyxisEventLogs()
 	} else {
 		p.logger.LogInfo("Pyxis event logs not being saved due to previous load error")
 	}

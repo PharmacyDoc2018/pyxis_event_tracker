@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type processMode int
 
 const (
@@ -9,6 +11,7 @@ const (
 )
 
 type processState struct {
+	pyxisLogsLoaded   []string
 	mode              processMode
 	eRxItemIdLinks    bool
 	dbConnection      bool
@@ -66,6 +69,44 @@ func (p *processState) PyxisEventLogsLoadedOkay() bool {
 func (p *processState) PyxisEventLogsLoadSuccessful() {
 	p.pyxisEventsLoaded = true
 	p.UpdateState()
+}
+
+func (p *processState) PyxisEventLogLoaded(pyxis string) *logError {
+	for _, log := range p.pyxisLogsLoaded {
+		if log == pyxis {
+			return &logError{
+				errMessage: fmt.Sprintf("error. %s already in loaded state", pyxis),
+				logMessage: fmt.Sprintf("Error. %s already in loaded state", pyxis),
+			}
+		}
+	}
+
+	p.pyxisLogsLoaded = append(p.pyxisLogsLoaded, pyxis)
+	return nil
+}
+
+func (p *processState) PyxisEventLogUnloaded(pyxis string) *logError {
+	for i, log := range p.pyxisLogsLoaded {
+		if log == pyxis {
+			p.pyxisLogsLoaded = append(p.pyxisLogsLoaded[:i], p.pyxisLogsLoaded[i+1:]...)
+			return nil
+		}
+	}
+
+	return &logError{
+		errMessage: fmt.Sprintf("error. %s not in loaded state", pyxis),
+		logMessage: fmt.Sprintf("Error. %s not in loaded state", pyxis),
+	}
+}
+
+func (p *processState) IsLoaded(pyxis string) bool {
+	for _, log := range p.pyxisLogsLoaded {
+		if log == pyxis {
+			return true
+		}
+	}
+
+	return false
 }
 
 func initProcessState() *processState {

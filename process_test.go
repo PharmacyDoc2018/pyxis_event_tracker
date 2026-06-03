@@ -162,7 +162,7 @@ func TestPyxisEventLog(t *testing.T) {
 		}
 	}
 
-	err = p.savePyxisEventLogs()
+	err = p.saveAndUnloadPyxisEventLogs()
 	if err != nil {
 		t.Errorf("error saving test Pyxis event logs: %s", err.Error())
 	}
