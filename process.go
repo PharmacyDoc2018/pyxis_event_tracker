@@ -70,11 +70,9 @@ func initProcess() *Process {
 	db, err := sql.Open("sqlserver", connString)
 	if err != nil {
 		fmt.Printf("error creating connection pool: %s\n ", err.Error())
-	} else {
-		p.state.DbConnectionSuccessful()
 	}
-	p.db = db
 
+	p.db = db
 	p.dbq = database.New(db)
 
 	p.cacheStop = make(chan struct{})
@@ -89,6 +87,7 @@ func initProcess() *Process {
 		p.logger.LogError("Connection to database not successful")
 	} else {
 		fmt.Println("connection successful")
+		p.state.DbConnectionSuccessful()
 		p.logger.LogInfo("Connection to database successful")
 	}
 

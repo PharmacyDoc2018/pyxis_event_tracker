@@ -259,6 +259,8 @@ func (p *Process) createNewPyxisEventLog(pyxisName string, startDateTime time.Ti
 		pyxisName,
 		startDateTime.Format("2006-01-02 1504")))
 
+	p.state.PyxisEventLogLoaded(pyxisName)
+
 	return nil
 }
 
