@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 type processMode int
 
@@ -35,6 +38,10 @@ func (p *processState) UpdateState() {
 		return
 	}
 
+	if !p.departmentCoverage {
+		p.mode = SafetyMode
+	}
+
 	if !p.dbConnection {
 		p.mode = LocalOnly
 		return
@@ -43,6 +50,18 @@ func (p *processState) UpdateState() {
 
 func (p *processState) Mode() processMode {
 	return p.mode
+}
+
+func (p *processState) GetState() string {
+	res := ""
+
+	res = res + "Mode: " + strconv.Itoa(int(p.mode)) + "\n\n"
+	res = res + "Pyxis Events: " + boolStatus(p.pyxisEventsLoaded) + "\n"
+	res = res + "Database Connection: " + boolStatus(p.dbConnection) + "\n"
+	res = res + "ERxItemIdLinks: " + boolStatus(p.eRxItemIdLinks) + "\n"
+	res = res + "Department Coverage: " + boolStatus(p.departmentCoverage) + "\n"
+
+	return res
 }
 
 func (p *processState) ERxItemIdLinksOkay() bool {
@@ -127,5 +146,13 @@ func (p *processState) IsLoaded(pyxis string) bool {
 func initProcessState() *processState {
 	return &processState{
 		mode: SafetyMode,
+	}
+}
+
+func boolStatus(status bool) string {
+	if status {
+		return "Good"
+	} else {
+		return "Failed"
 	}
 }
