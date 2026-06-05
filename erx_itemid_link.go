@@ -93,43 +93,40 @@ func (p *Process) saveERxItemIdLinks() error {
 func (p *Process) loadERxItemIdLinks() error {
 	p.logger.LogInfo("Loading ERxItemIdLinks")
 
-	data, err := os.ReadFile(filepath.Join(p.pathToData, ERxItemIdLinksFileName))
-	if err != nil {
-		if err.Error() == "open data/ERxItemIdLinks.json: no such file or directory" {
-			p.logger.LogInfo("ERxItemIdLinks.json not found. Attempting to create file")
-			f, e := os.OpenFile("./data/ERxItemIdLinks.json", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-			if e != nil {
-				p.logger.LogError(fmt.Sprintf("Error. Unable to read %s: %s. Unable to create file: %s",
-					ERxItemIdLinksFileName,
-					err.Error(),
-					e.Error()))
-				return fmt.Errorf("%s - %s", err.Error(), e.Error())
+	//-- Check if save file exists. Create file if not found.
+	if _, err := os.Stat(filepath.Join(p.pathToData, ERxItemIdLinksFileName)); err != nil {
+		if os.IsNotExist(err) {
+			p.logger.LogInfo(fmt.Sprintf("%s not found. Attempting to create file", ERxItemIdLinksFileName))
+			file, err := os.OpenFile(filepath.Join(p.pathToData, ERxItemIdLinksFileName), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+			if err != nil {
+				p.logger.LogError(fmt.Sprintf("Error. Unable to create ERxItemIdLinks save file: %s", err.Error()))
+				return fmt.Errorf("error. unable to create ERxItemIdLinks save file: %s", err.Error())
 			}
-
-			_, e = f.WriteString("{}")
-			if e != nil {
-				p.logger.LogError(fmt.Sprintf("Error. Unable to read %s: %s. File created. Unable to write to file: %s",
-					ERxItemIdLinksFileName,
-					err.Error(),
-					e.Error()))
-				return fmt.Errorf("%s - %s", err.Error(), e.Error())
+			_, err = file.WriteString("{}")
+			if err != nil {
+				p.logger.LogError(fmt.Sprintf("Error. Unable to write ERxItemIdLinks save file: %s", err.Error()))
+				return fmt.Errorf("error. unable to write ERxItemIdLinks save file: %s", err.Error())
 			}
-		} else {
-			p.logger.LogError(fmt.Sprintf("Error. Unable to read %s: %s", ERxItemIdLinksFileName, err.Error()))
-			return err
-
+			file.Close()
 		}
-		p.logger.LogInfo("ERxItemIdLinks.json file created")
-		data = []byte("{}")
 	}
 
-	err = json.Unmarshal(data, p.erxItemIdLinks)
+	//-- Load json data from save file
+	data, err := os.ReadFile(filepath.Join(p.pathToData, ERxItemIdLinksFileName))
 	if err != nil {
-		p.logger.LogError(fmt.Sprintf("Error unmarshalling data from %s: %s", ERxItemIdLinksFileName, err.Error()))
+		p.logger.LogError(fmt.Sprintf("Load failed: %s", err.Error()))
 		return err
 	}
 
+	//-- Unmarshal json into process memory
+	err = json.Unmarshal(data, p.erxItemIdLinks)
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Load failed: %s", err.Error()))
+		return err
+
+	}
+
 	p.logger.LogInfo("ERxItemIdLinks loaded successfully")
-	p.state.ERxItemIdLinksSuccessful()
+	p.state.DepartmentCoverageSuccessful()
 	return nil
 }
