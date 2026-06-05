@@ -130,5 +130,6 @@ func (p *Process) loadERxItemIdLinks() error {
 	}
 
 	p.logger.LogInfo("ERxItemIdLinks loaded successfully")
+	p.state.ERxItemIdLinksSuccessful()
 	return nil
 }

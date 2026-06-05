@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/PharmacyDoc2018/pyxis_event_tracker/cache"
@@ -102,11 +103,13 @@ func initProcess() *Process {
 	err = p.loadERxItemIdLinks()
 	if err != nil {
 		fmt.Println(err.Error())
-	} else {
-		p.state.ERxItemIdLinksSuccessful()
 	}
 
 	p.departmentCoverage = initDepartmentCoverage()
+	err = p.loadDepartmentCoverage()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 
 	p.startupLogsCheck()
 	p.saveAndUnloadPyxisEventLogs()
@@ -118,15 +121,33 @@ func (p *Process) exit() {
 	p.logger.LogInfo("Closing Application...")
 
 	if p.state.PyxisEventLogsLoadedOkay() {
-		p.saveAndUnloadPyxisEventLogs()
+		err := p.saveAndUnloadPyxisEventLogs()
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Error while saving: %s", err.Error()))
+			fmt.Println(err.Error())
+		}
 	} else {
 		p.logger.LogInfo("Pyxis event logs not being saved due to previous load error")
 	}
 
 	if p.state.ERxItemIdLinksOkay() {
-		p.saveERxItemIdLinks()
+		err := p.saveERxItemIdLinks()
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Error while saving: %s", err.Error()))
+			fmt.Println(err.Error())
+		}
 	} else {
 		p.logger.LogInfo("ERx - ItemId links not being saved due to previous load error")
+	}
+
+	if p.state.DepartmentCoverageOkay() {
+		err := p.saveDepartmentCoverage()
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Error while saving: %s", err.Error()))
+			fmt.Println(err.Error())
+		}
+	} else {
+		p.logger.LogInfo("Department - Coverage links not being saved due to previous load error")
 	}
 
 	p.cliConfig.Rl.Close()
@@ -166,6 +187,16 @@ func (p *Process) initialLaunchSetup() error {
 	}
 
 	f, err := os.OpenFile("./data/ERxItemIdLinks.json", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	_, err = f.WriteString("{}")
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	f, err = os.OpenFile(filepath.Join(p.pathToData, departmentCoverageFileName), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}
