@@ -303,6 +303,10 @@ func (p *Process) unloadPyxisEventLog(index int) {
 
 func (p *Process) saveAndUnloadPyxisEventLogs() error {
 	for i, pyxisEventLog := range p.PyxisEventLogs {
+		if !p.state.IsLoaded(pyxisEventLog.PyxisName) {
+			continue
+		}
+
 		p.logger.LogInfo(fmt.Sprintf("Saving %s Pyxis event log", pyxisEventLog.PyxisName))
 		logFile, err := os.OpenFile(filepath.Join(p.pathToData, pyxisEventLogsFolder, pyxisEventLog.PyxisName+".csv"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
