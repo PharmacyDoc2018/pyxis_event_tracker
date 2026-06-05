@@ -46,6 +46,8 @@ func (p *processState) UpdateState() {
 		p.mode = LocalOnly
 		return
 	}
+
+	p.mode = Normal
 }
 
 func (p *processState) Mode() processMode {
