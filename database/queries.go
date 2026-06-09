@@ -3,6 +3,8 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -169,6 +171,123 @@ func (q *Queries) GetPyxisEventsForDeviceByDateRange(ctx context.Context, arg Ge
 			&i.WitnessName,
 			&i.WitnessID,
 			&i.MRN,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+
+}
+
+type MarActionResponse struct {
+	SavedTime               sql.NullTime
+	OrderMedId              int
+	FilteredMarAction       sql.NullString
+	DisplayName             sql.NullString
+	MedicationId            sql.NullInt64
+	SystemLogin             sql.NullString
+	Name                    sql.NullString
+	CalcDoseUnitDescription sql.NullString
+	CalcMinDose             sql.NullFloat64
+	PatMRN                  sql.NullString
+	PatName                 sql.NullString
+}
+
+type GetMarAdminActionsByPatientDayMedIDsParams struct {
+	Date   time.Time
+	DeptID string
+	Mrn    string
+	MedIDs []string
+}
+
+func (q *Queries) GetMarAdminActionsByPatientDayMedIDs(ctx context.Context, arg GetMarAdminActionsByPatientDayMedIDsParams) ([]MarActionResponse, error) {
+	placeholders := make([]string, len(arg.MedIDs))
+	medIDArgs := make([]any, len(arg.MedIDs))
+
+	h, m, s := arg.Date.Clock()
+	if h != 0 || m != 0 || s != 0 {
+		return nil, fmt.Errorf("error. date must be set to midnight of the selected day")
+	}
+
+	endDate := arg.Date.Add(24 * time.Hour)
+
+	allArgs := []any{
+		sql.Named("start", arg.Date),
+		sql.Named("end", endDate),
+		sql.Named("dept", arg.DeptID),
+		sql.Named("mrn", arg.Mrn),
+	}
+
+	for i, medID := range arg.MedIDs {
+		placeholders[i] = fmt.Sprintf("@p%d", i)
+		medIDArgs[i] = sql.Named(fmt.Sprintf("p%d", i), medID)
+	}
+
+	allArgs = append(allArgs, medIDArgs...)
+
+	query := fmt.Sprintf(`
+SELECT
+	ma.SAVED_TIME,
+	ma.ORDER_MED_ID,
+	mc.FilteredMARAction,
+	o.DISPLAY_NAME, 
+	o.MEDICATION_ID,
+	u.SYSTEM_LOGIN,
+	u.NAME,
+	o.CalcDoseUnitDescription,
+	o.CALC_MIN_DOSE,
+	pat.PAT_MRN_ID,
+	pat.PAT_NAME
+FROM dbo.fctMARActions ma
+INNER JOIN dbo.dimMARCharacteristics mc
+	ON ma.sk_dim_MARChar = mc.sk_dim_MARChar
+INNER JOIN dbo.fctORDER_MED o
+	ON ma.ORDER_MED_ID = o.ORDER_MED_ID
+INNER JOIN dbo.dimUsers u
+	ON ma.MAR_ActionUser = u.User_ID
+INNER JOIN dbo.dimPatient pat
+	ON pat.PAT_ID = o.PAT_ID
+WHERE mc.FilteredMARAction IN (
+	'Given',
+	'New Bag'
+)
+AND ma.SAVED_TIME >= @start
+AND ma.SAVED_TIME < @end
+AND ma.MAR_ADMIN_DEPT_ID = @dept
+AND pat.PAT_MRN_ID = @mrn
+AND o.MEDICATION_ID IN (%s)
+ORDER BY ma.SAVED_TIME;
+`, strings.Join(placeholders, ","))
+
+	rows, err := q.db.QueryContext(ctx, query, allArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []MarActionResponse
+	for rows.Next() {
+		var i MarActionResponse
+		if err := rows.Scan(
+			&i.SavedTime,
+			&i.OrderMedId,
+			&i.FilteredMarAction,
+			&i.DisplayName,
+			&i.MedicationId,
+			&i.SystemLogin,
+			&i.Name,
+			&i.CalcDoseUnitDescription,
+			&i.CalcMinDose,
+			&i.PatMRN,
+			&i.PatName,
 		); err != nil {
 			return nil, err
 		}
