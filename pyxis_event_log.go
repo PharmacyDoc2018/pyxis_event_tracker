@@ -386,10 +386,25 @@ func (p *Process) loadPyxisEventlog(pyxis string) error {
 	err = json.Unmarshal(data, &settings)
 	if err != nil {
 		p.logger.LogError(fmt.Sprintf("Error unmarshalling settings data for %s: %s", pyxis, err.Error()))
+		return err
+	}
+
+	data, err = os.ReadFile(filepath.Join(p.pathToData, controlEventLogsFolder, pyxis+".json"))
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Error. Unable to read %s control event log file: %s", pyxis, err.Error()))
+		return err
+	}
+
+	controlLog := ControlEventLog{}
+	err = json.Unmarshal(data, &controlLog)
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Error unmarshalling control event log data for %s: %s", pyxis, err.Error()))
+		return err
 	}
 
 	pyxisEventLog := PyxisEventLog{
 		Log:               log,
+		ControlEventLog:   controlLog,
 		StartDateTime:     settings.StartDateTime,
 		LastEventDateTime: settings.LastEventDateTime,
 		PyxisName:         pyxis,
