@@ -2,7 +2,7 @@ package main
 
 import "time"
 
-type MarEvent struct {
+type MarAction struct {
 	SavedTime               time.Time //-- SAVED_TIME
 	OrderNumber             string    //-- ORDER_MED_ID - convert to string
 	MarAction               string    //-- FilteredMARAction
