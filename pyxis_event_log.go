@@ -37,6 +37,7 @@ type PyxisEvent struct {
 
 type PyxisEventLog struct {
 	Log               []PyxisEvent
+	ControlEventLog   ControlEventLog
 	StartDateTime     time.Time
 	LastEventDateTime time.Time
 	PyxisName         string
@@ -402,8 +403,9 @@ func (p *Process) loadPyxisEventlog(pyxis string) error {
 
 func (p *Process) loadPyxisEventLogs() error {
 	type unmatchedLog struct {
-		Name string
-		Logs []PyxisEvent
+		Name        string
+		Logs        []PyxisEvent
+		ControlLogs ControlEventLog
 	}
 
 	type logSettings struct {

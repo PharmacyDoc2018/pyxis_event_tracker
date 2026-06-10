@@ -17,6 +17,7 @@ const cacheInterval = 60 * time.Minute
 const minPyxisEventRecheckInterval = 24 * time.Hour
 const pyxisEventLogsFolder = "pyxis_event_logs"
 const pyxisEventLogSettingsFolder = "log_settings"
+const controlEventLogsFolder = "control_logs"
 
 type Process struct {
 	PyxisEventLogs     []PyxisEventLog
@@ -56,7 +57,6 @@ func initProcess() *Process {
 		if err != nil {
 			fmt.Printf("ERROR. first time initilization process not complete: %s\n", err.Error())
 		}
-		godotenv.Load(".env")
 	}
 
 	connString = os.Getenv("CONNSTRING")
@@ -168,12 +168,15 @@ func (p *Process) initialLaunchSetup() error {
 	if err != nil {
 		return err
 	}
-	defer env.Close()
 
 	_, err = env.WriteString(defaultEnv)
 	if err != nil {
 		return err
 	}
+
+	env.Close()
+	godotenv.Load(".env")
+	p.pathToData = os.Getenv("DATAPATH")
 
 	err = os.Mkdir("./logs/", 0755)
 	if err != nil {
@@ -211,6 +214,11 @@ func (p *Process) initialLaunchSetup() error {
 	}
 
 	err = os.Mkdir("./data/pyxis_event_logs/", 0755)
+	if err != nil {
+		return err
+	}
+
+	err = os.Mkdir(filepath.Join(p.pathToData, controlEventLogsFolder), 0755)
 	if err != nil {
 		return err
 	}
