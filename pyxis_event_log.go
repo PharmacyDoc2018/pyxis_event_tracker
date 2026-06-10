@@ -403,9 +403,8 @@ func (p *Process) loadPyxisEventlog(pyxis string) error {
 
 func (p *Process) loadPyxisEventLogs() error {
 	type unmatchedLog struct {
-		Name        string
-		Logs        []PyxisEvent
-		ControlLogs ControlEventLog
+		Name string
+		Logs []PyxisEvent
 	}
 
 	type logSettings struct {
@@ -492,8 +491,41 @@ func (p *Process) loadPyxisEventLogs() error {
 	if len(matchedLogs) != len(unmatchedLogs) ||
 		len(matchedSettings) != len(unmatchedSettings) {
 		p.logger.LogError("Error matching Pyxis logs and settings")
+		return fmt.Errorf("error. unable to match pyxis logs and settings on load")
 	}
-	//--
+
+	//-- Pull control event logs
+	tempLogSlices := pyxisEventLogs
+	pyxisEventLogs = []PyxisEventLog{}
+
+	for _, pyxisEventLog := range tempLogSlices {
+		//-- Check if control event log file exists. Add if doesn't exist
+		if _, err := os.Stat(filepath.Join(p.pathToData, controlEventLogsFolder, pyxisEventLog.PyxisName+".json")); err != nil {
+			if os.IsNotExist(err) {
+				pyxisEventLog.ControlEventLog = ControlEventLog{}
+				pyxisEventLogs = append(pyxisEventLogs, pyxisEventLog)
+				continue
+			} else {
+				p.logger.LogError(fmt.Sprintf("Error. Unable to read control event log for %s. Pyxis event log not loaded.", pyxisEventLog.PyxisName))
+				continue
+			}
+		}
+
+		//-- Read data from control event log file
+		data, err := os.ReadFile(filepath.Join(p.pathToData, controlEventLogsFolder, pyxisEventLog.PyxisName+".json"))
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Error. Unable to read control event log for %s. Pyxis event log not loaded.", pyxisEventLog.PyxisName))
+			continue
+		}
+
+		err = json.Unmarshal(data, &pyxisEventLog.ControlEventLog)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Error. Unable to unmarshall control event log for %s. Pyxis event log not loaded.", pyxisEventLog.PyxisName))
+			continue
+		}
+
+		pyxisEventLogs = append(pyxisEventLogs, pyxisEventLog)
+	}
 
 	p.PyxisEventLogs = pyxisEventLogs
 
