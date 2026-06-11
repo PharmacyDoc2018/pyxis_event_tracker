@@ -43,79 +43,66 @@ type PyxisEventLog struct {
 	PyxisName         string
 }
 
-func (p *Process) cleanUpPyxisEventLog(index int) error {
-	if index >= len(p.PyxisEventLogs) {
-		err := fmt.Errorf("error. index %d out of range. Number of Pyxis event logs: %d", index, len(p.PyxisEventLogs))
-		p.logger.LogError(fmt.Sprintf("cleanUpPyxisEventLog was called with an invalid index: %s", err.Error()))
-		return err
-	}
+func (p *PyxisEventLog) CleanUp() logResponder {
+	logger := logResponder{}
 
 	//-- resort the events
-	p.logger.LogInfo(fmt.Sprintf("sorting %s event log", p.PyxisEventLogs[index].PyxisName))
-	sort.Slice(p.PyxisEventLogs[index].Log, func(i, j int) bool {
-		return p.PyxisEventLogs[index].Log[i].TxDateTime.Before(p.PyxisEventLogs[index].Log[j].TxDateTime)
+	logger.AddInfo(fmt.Sprintf("sorting %s event log", p.PyxisName))
+	sort.Slice(p.Log, func(i, j int) bool {
+		return p.Log[i].TxDateTime.Before(p.Log[j].TxDateTime)
 	})
-	p.logger.LogInfo(fmt.Sprintf("%s sort complete", p.PyxisEventLogs[index].PyxisName))
+	logger.AddInfo(fmt.Sprintf("%s sort complete", p.PyxisName))
 
 	//-- check for duplicates
-	p.logger.LogInfo(fmt.Sprintf("checking %s event log for duplicates", p.PyxisEventLogs[index].PyxisName))
+	logger.AddInfo(fmt.Sprintf("checking %s event log for duplicates", p.PyxisName))
 	newLog := []PyxisEvent{}
 	numDups := 0
-	newLog = append(newLog, p.PyxisEventLogs[index].Log[0])
-	for i := 1; i < len(p.PyxisEventLogs[index].Log); i++ {
-		if p.PyxisEventLogs[index].Log[i] == p.PyxisEventLogs[index].Log[i-1] {
+	newLog = append(newLog, p.Log[0])
+	for i := 1; i < len(p.Log); i++ {
+		if p.Log[i] == p.Log[i-1] {
 			numDups++
 			continue
 		} else {
-			newLog = append(newLog, p.PyxisEventLogs[index].Log[i])
+			newLog = append(newLog, p.Log[i])
 		}
 	}
-	p.PyxisEventLogs[index].Log = newLog
+	p.Log = newLog
 	switch numDups {
 	case 0:
-		p.logger.LogInfo("check complete. no duplicates found")
+		logger.AddInfo("check complete. no duplicates found")
 
 	case 1:
-		p.logger.LogInfo("check complete. 1 duplicate removed")
+		logger.AddInfo("check complete. 1 duplicate removed")
 
 	default:
-		p.logger.LogInfo(fmt.Sprintf("check complete. %d duplicates removed", numDups))
+		logger.AddInfo(fmt.Sprintf("check complete. %d duplicates removed", numDups))
 	}
 
 	//-- update date range
-	oldDateTime := p.PyxisEventLogs[index].LastEventDateTime
-	p.PyxisEventLogs[index].LastEventDateTime = p.PyxisEventLogs[index].Log[len(p.PyxisEventLogs[index].Log)-1].TxDateTime
-	if p.PyxisEventLogs[index].LastEventDateTime.Compare(oldDateTime) != 0 {
-		p.logger.LogInfo(fmt.Sprintf("%s last event updated from %s to %s",
-			p.PyxisEventLogs[index].PyxisName,
+	oldDateTime := p.LastEventDateTime
+	p.LastEventDateTime = p.Log[len(p.Log)-1].TxDateTime
+	if p.LastEventDateTime.Compare(oldDateTime) != 0 {
+		logger.AddInfo(fmt.Sprintf("%s last event updated from %s to %s",
+			p.PyxisName,
 			oldDateTime.Format("2006-01-02 1504"),
-			p.PyxisEventLogs[index].LastEventDateTime.Format("2006-01-02 1504")))
+			p.LastEventDateTime.Format("2006-01-02 1504")))
 	}
 
-	return nil
+	return logger
 }
 
-func (p *Process) addPyxisEvents(index int, events []PyxisEvent) error {
-	if index >= len(p.PyxisEventLogs) {
-		err := fmt.Errorf("error. index %d out of range. Number of Pyxis event logs: %d", index, len(p.PyxisEventLogs))
-		p.logger.LogError(fmt.Sprintf("addPyxisEvents was called with an invalid index: %s", err.Error()))
-		return err
-	}
-	p.logger.LogInfo(fmt.Sprintf("adding %d events to %s event log",
+func (p *PyxisEventLog) AddPyxisEvents(events []PyxisEvent) logResponder {
+	logger := logResponder{}
+	logger.AddInfo(fmt.Sprintf("adding %d events to %s event log",
 		len(events),
-		p.PyxisEventLogs[index].PyxisName))
+		p.PyxisName))
 
-	p.PyxisEventLogs[index].Log = append(p.PyxisEventLogs[index].Log, events...)
+	p.Log = append(p.Log, events...)
+	logger.AddInfo("events added")
 
-	p.logger.LogInfo("events added")
+	logger.AddResponses(p.CleanUp())
 
-	err := p.cleanUpPyxisEventLog(index)
-	if err != nil {
-		p.logger.LogError("Error calling cleanUpPyxisEventLog from addPyxisEvents. Pyxis event log may be out of order and/or contain duplicates")
-		return err
-	}
-
-	return nil
+	return logger
 }
 
 func (p *PyxisEventLog) lastEventDateString() string {
@@ -126,7 +113,7 @@ func (p *PyxisEventLog) lastEventDateString() string {
 	return p.LastEventDateTime.Format("2006-01-02 15:04")
 }
 
-func (p *Process) parseEventsAndAdd(index int, events []database.PyxisEventResponse) {
+func (p *PyxisEventLog) ParseEventsAndAdd(events []database.PyxisEventResponse) logResponder {
 	parsedEvents := []PyxisEvent{}
 
 	for _, event := range events {
@@ -238,71 +225,16 @@ func (p *Process) parseEventsAndAdd(index int, events []database.PyxisEventRespo
 		parsedEvents = append(parsedEvents, pyxisEvent)
 	}
 
-	p.addPyxisEvents(index, parsedEvents)
+	return p.AddPyxisEvents(parsedEvents)
 
-}
-
-func (p *Process) createNewPyxisEventLog(pyxisName string, startDateTime time.Time) error {
-	for _, pyxisLog := range p.PyxisEventLogs {
-		if pyxisName == pyxisLog.PyxisName {
-			err := fmt.Errorf("error. %s already exists", pyxisName)
-			p.logger.LogError(fmt.Sprintf("Error. Failed to create new Pyxis event log: %s", err.Error()))
-			return err
-		}
-	}
-
-	p.PyxisEventLogs = append(p.PyxisEventLogs, PyxisEventLog{
-		Log:           []PyxisEvent{},
-		StartDateTime: startDateTime,
-		PyxisName:     pyxisName,
-	})
-	p.logger.LogInfo(fmt.Sprintf("New Pyxis event log: %s added. Logging events starting on or after %s.",
-		pyxisName,
-		startDateTime.Format("2006-01-02 1504")))
-
-	p.state.PyxisEventLogLoaded(pyxisName)
-
-	return nil
-}
-
-func (p *Process) findMissingPyxisEvents() {
-	for i := range p.PyxisEventLogs {
-		startTime := time.Time{}
-		if p.PyxisEventLogs[i].LastEventDateTime.IsZero() {
-			startTime = p.PyxisEventLogs[i].StartDateTime
-		} else {
-			startTime = p.PyxisEventLogs[i].LastEventDateTime
-		}
-
-		endTime := timeToday() //--time today at midnight for cache if duplicate call
-
-		if endTime.Sub(startTime) < minPyxisEventRecheckInterval {
-			p.logger.LogInfo(fmt.Sprintf("Last Pyxis event for %s on %s, less than 24 hours ago. Finding missing Pyxis events skipped",
-				p.PyxisEventLogs[i].PyxisName,
-				startTime.Format("2006-01-02 1504")))
-			continue
-		}
-
-		params := database.GetPyxisEventsForDeviceByDateRangeParams{
-			Device: p.PyxisEventLogs[i].PyxisName,
-			Start:  startTime,
-			End:    endTime,
-		}
-
-		events, err := getPyxisEvents(p, params) //-- logging handled in function
-		if err != nil {
-			fmt.Println(err.Error())
-			continue
-		}
-
-		p.parseEventsAndAdd(i, events)
-	}
 }
 
 func (p *Process) unloadPyxisEventLog(index int) {
 	p.PyxisEventLogs[index].Log = []PyxisEvent{}
 	p.state.PyxisEventLogUnloaded(p.PyxisEventLogs[index].PyxisName)
 }
+
+//func (p *Process) checkForNewControlEvents()
 
 func (p *Process) saveAndUnloadPyxisEventLogs() error {
 	p.logger.LogInfo("Saving pyxis event logs")

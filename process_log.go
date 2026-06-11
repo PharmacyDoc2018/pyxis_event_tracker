@@ -11,19 +11,6 @@ type processLogger struct {
 	logger *log.Logger
 }
 
-type logError struct {
-	errMessage string
-	logMessage string
-}
-
-func (l *logError) Error() string {
-	return l.errMessage
-}
-
-func (l *logError) LogError() string {
-	return l.logMessage
-}
-
 func (p processLogger) LogInfo(message string) {
 	prefix := "INFO: "
 	p.logger.Println(prefix + message)
@@ -40,6 +27,62 @@ func (p processLogger) EndSpace() {
 
 func (p processLogger) Close() {
 	p.file.Close()
+}
+
+type logError struct {
+	errMessage string
+	logMessage string
+}
+
+func (l *logError) Error() string {
+	return l.errMessage
+}
+
+func (l *logError) LogError() string {
+	return l.logMessage
+}
+
+type logInfo struct {
+	logMessage string
+}
+
+type logResponse struct {
+	logError *logError
+	logInfo  *logInfo
+}
+
+type logResponder struct {
+	logResponses []logResponse
+}
+
+func (l logResponder) AddInfo(msg string) {
+	l.logResponses = append(l.logResponses, logResponse{
+		logInfo: &logInfo{
+			logMessage: msg,
+		},
+	})
+}
+
+func (l logResponder) AddError(msg string) {
+	l.logResponses = append(l.logResponses, logResponse{
+		logError: &logError{
+			logMessage: msg,
+		},
+	})
+}
+
+func (l logResponder) AddResponses(ll logResponder) {
+	l.logResponses = append(l.logResponses, ll.logResponses...)
+}
+
+func (p processLogger) Log(l logResponder) {
+	for _, response := range l.logResponses {
+		if response.logError != nil {
+			p.LogError(response.logError.logMessage)
+		} else {
+			p.LogInfo(response.logInfo.logMessage)
+		}
+	}
 }
 
 func initProcessLogger(filePath string) processLogger {

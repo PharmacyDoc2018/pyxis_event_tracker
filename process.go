@@ -53,6 +53,70 @@ func (p *Process) startupLogsCheck() {
 	}
 }
 
+func (p *Process) cleanUpPyxisEventLogs() {
+	for _, pyxisEventLog := range p.PyxisEventLogs {
+		logger := pyxisEventLog.CleanUp()
+		p.logger.Log(logger)
+	}
+}
+
+func (p *Process) findMissingPyxisEvents() {
+	for i := range p.PyxisEventLogs {
+		startTime := time.Time{}
+		if p.PyxisEventLogs[i].LastEventDateTime.IsZero() {
+			startTime = p.PyxisEventLogs[i].StartDateTime
+		} else {
+			startTime = p.PyxisEventLogs[i].LastEventDateTime
+		}
+
+		endTime := timeToday() //--time today at midnight for cache if duplicate call
+
+		if endTime.Sub(startTime) < minPyxisEventRecheckInterval {
+			p.logger.LogInfo(fmt.Sprintf("Last Pyxis event for %s on %s, less than 24 hours ago. Finding missing Pyxis events skipped",
+				p.PyxisEventLogs[i].PyxisName,
+				startTime.Format("2006-01-02 1504")))
+			continue
+		}
+
+		params := database.GetPyxisEventsForDeviceByDateRangeParams{
+			Device: p.PyxisEventLogs[i].PyxisName,
+			Start:  startTime,
+			End:    endTime,
+		}
+
+		events, err := getPyxisEvents(p, params) //-- logging handled in function
+		if err != nil {
+			fmt.Println(err.Error())
+			continue
+		}
+
+		p.logger.Log(p.PyxisEventLogs[i].ParseEventsAndAdd(events))
+	}
+}
+
+func (p *Process) createNewPyxisEventLog(pyxisName string, startDateTime time.Time) error {
+	for _, pyxisLog := range p.PyxisEventLogs {
+		if pyxisName == pyxisLog.PyxisName {
+			err := fmt.Errorf("error. %s already exists", pyxisName)
+			p.logger.LogError(fmt.Sprintf("Error. Failed to create new Pyxis event log: %s", err.Error()))
+			return err
+		}
+	}
+
+	p.PyxisEventLogs = append(p.PyxisEventLogs, PyxisEventLog{
+		Log:           []PyxisEvent{},
+		StartDateTime: startDateTime,
+		PyxisName:     pyxisName,
+	})
+	p.logger.LogInfo(fmt.Sprintf("New Pyxis event log: %s added. Logging events starting on or after %s.",
+		pyxisName,
+		startDateTime.Format("2006-01-02 1504")))
+
+	p.state.PyxisEventLogLoaded(pyxisName)
+
+	return nil
+}
+
 func initProcess() *Process {
 	p := Process{}
 	p.state = initProcessState()
@@ -119,7 +183,10 @@ func initProcess() *Process {
 		fmt.Println(err.Error())
 	}
 
+	//-- Check for new Pyxis events
 	p.startupLogsCheck()
+
+	//-- unload Pyxis event logs from memory
 	p.saveAndUnloadPyxisEventLogs()
 
 	return &p

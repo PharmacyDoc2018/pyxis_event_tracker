@@ -37,7 +37,7 @@ func TestPyxisEventLog(t *testing.T) {
 	if err != nil {
 		t.Errorf("error creating new Pyxis event log: %s", err.Error())
 	}
-	p.addPyxisEvents(0, []PyxisEvent{
+	p.logger.Log(p.PyxisEventLogs[0].AddPyxisEvents([]PyxisEvent{
 		{
 			ItemTransactionKey:    uuid.New(),
 			UserName:              "Testnurse, One",
@@ -98,7 +98,7 @@ func TestPyxisEventLog(t *testing.T) {
 			WitnessID:             "Unknown",
 			MRN:                   "7654321",
 		},
-	})
+	}))
 
 	if len(p.PyxisEventLogs[0].Log) != 3 {
 		t.Fatalf("error. AddEvents method failed to add pyxis events")
@@ -147,7 +147,8 @@ func TestPyxisEventLog(t *testing.T) {
 		},
 	}
 
-	p.addPyxisEvents(0, newEvents)
+	p.logger.Log(p.PyxisEventLogs[0].AddPyxisEvents(newEvents))
+
 	expectedOrder := []string{
 		"oxyCODONE 5 mg TABLET UD",
 		"lorazepam 0.5 mg TABLET UD",
@@ -173,10 +174,14 @@ func TestPyxisEventLog(t *testing.T) {
 		t.Errorf("error loading test Pyxis event logs: %s", err.Error())
 	}
 
-	if len(p.PyxisEventLogs[0].Log) != 5 {
-		t.Errorf("error. all test Pyxis event log data not retrieved from save data. Expected: %d. Actual: %d", 5, len(p.PyxisEventLogs[0].Log))
-	}
+	for _, pyxisEventLog := range p.PyxisEventLogs {
+		if pyxisEventLog.PyxisName == "testPyxis" {
+			if len(pyxisEventLog.Log) != 5 {
+				t.Errorf("error. all test Pyxis event log data not retrieved from save data. Expected: %d. Actual: %d", 5, len(p.PyxisEventLogs[0].Log))
+			}
 
+		}
+	}
 }
 
 func TestParseDate(t *testing.T) {
