@@ -37,6 +37,15 @@ type Process struct {
 func (p *Process) startupLogsCheck() {
 	if p.state.DbConnectionOkay() {
 		p.logger.LogInfo("Initiating startup logs check")
+
+		//-- Check for nil PyxisEventLog pointers in ControlEventLog.
+		p.logger.LogInfo("Checking ControlEventLog connections")
+		for i, log := range p.PyxisEventLogs {
+			if log.ControlEventLog.pyxisEventLog == nil {
+				log.ControlEventLog.pyxisEventLog = &p.PyxisEventLogs[i]
+				p.logger.LogInfo(fmt.Sprintf("PyxisEventLog pointer created for %s ControlEventLog", log.PyxisName))
+			}
+		}
 		p.findMissingPyxisEvents()
 
 	} else {

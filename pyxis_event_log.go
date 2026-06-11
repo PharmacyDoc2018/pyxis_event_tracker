@@ -309,6 +309,7 @@ func (p *Process) saveAndUnloadPyxisEventLogs() error {
 	for i, pyxisEventLog := range p.PyxisEventLogs {
 		//-- Skip to next pyxis if current is not loaded
 		if !p.state.IsLoaded(pyxisEventLog.PyxisName) {
+			//-- ADD CALL TO SAVE CONTROL EVENT LOG
 			continue
 		}
 
@@ -536,15 +537,16 @@ func (p *Process) loadPyxisEventLogs() error {
 		return fmt.Errorf("error. unable to match pyxis logs and settings on load")
 	}
 
-	//-- Pull control event logs
-	tempLogSlices := pyxisEventLogs
-	pyxisEventLogs = []PyxisEventLog{}
+	p.PyxisEventLogs = pyxisEventLogs
 
-	for _, pyxisEventLog := range tempLogSlices {
+	//-- Pull control event logs
+	for i, pyxisEventLog := range p.PyxisEventLogs {
 		//-- Check if control event log file exists. Add if doesn't exist
 		if _, err := os.Stat(filepath.Join(p.pathToData, controlEventLogsFolder, pyxisEventLog.PyxisName+".json")); err != nil {
 			if os.IsNotExist(err) {
-				pyxisEventLog.ControlEventLog = ControlEventLog{}
+				pyxisEventLog.ControlEventLog = ControlEventLog{
+					pyxisEventLog: &p.PyxisEventLogs[i],
+				}
 				pyxisEventLogs = append(pyxisEventLogs, pyxisEventLog)
 				continue
 			} else {
@@ -560,28 +562,24 @@ func (p *Process) loadPyxisEventLogs() error {
 			continue
 		}
 
-		err = json.Unmarshal(data, &pyxisEventLog.ControlEventLog)
+		err = json.Unmarshal(data, &p.PyxisEventLogs[i].ControlEventLog)
 		if err != nil {
 			p.logger.LogError(fmt.Sprintf("Error. Unable to unmarshall control event log for %s. Pyxis event log not loaded.", pyxisEventLog.PyxisName))
 			continue
 		}
 
-		pyxisEventLogs = append(pyxisEventLogs, pyxisEventLog)
-	}
+		//-- Link PyxisEventLog pointer in ControlEventLog
+		p.PyxisEventLogs[i].ControlEventLog.pyxisEventLog = &p.PyxisEventLogs[i]
 
-	p.PyxisEventLogs = pyxisEventLogs
-
-	//-- Update process state for loaded Pyxis event logs
-	for _, log := range p.PyxisEventLogs {
-		logErr := p.state.PyxisEventLogLoaded(log.PyxisName)
+		//-- Add pyxis name to list of loaded pyxis event logs in process state
+		logErr := p.state.PyxisEventLogLoaded(pyxisEventLog.PyxisName)
 		if logErr != nil {
 			p.logger.LogError(logErr.logMessage)
 			return logErr
 		}
 	}
-	p.state.PyxisEventLogsLoadSuccessful()
-	//--
 
+	p.state.PyxisEventLogsLoadSuccessful()
 	p.logger.LogInfo("Pyxis event logs loaded")
 	return nil
 }

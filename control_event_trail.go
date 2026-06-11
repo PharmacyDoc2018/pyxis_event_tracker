@@ -1,6 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"time"
 
@@ -34,7 +38,8 @@ type ControlEventTrail struct {
 }
 
 type ControlEventLog struct {
-	Log []ControlEventTrail
+	Log           []ControlEventTrail
+	pyxisEventLog *PyxisEventLog
 }
 
 func (c *ControlEventLog) Sort() {
@@ -57,4 +62,28 @@ func (c *ControlEventLog) GetLoggedPyxisEventKeys() map[uuid.UUID]struct{} {
 	}
 
 	return eventKeys
+}
+
+func (c *ControlEventLog) SaveControlEventLog(p *Process) error {
+	//-- Marshall and write control event log data
+	data, err := json.Marshal(&c.Log)
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Error marshalling control event log for %s Pyxis: %s", c.pyxisEventLog.PyxisName, err.Error()))
+		return err
+	}
+
+	controlFile, err := os.OpenFile(filepath.Join(p.pathToData, controlEventLogsFolder, c.pyxisEventLog.PyxisName+".json"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Error opening %s control event log: %s", c.pyxisEventLog.PyxisName, err.Error()))
+		return err
+	}
+	defer controlFile.Close()
+
+	_, err = controlFile.Write(data)
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Error saving %s control event log: %s", c.pyxisEventLog.PyxisName, err.Error()))
+		return err
+	}
+
+	return nil
 }
