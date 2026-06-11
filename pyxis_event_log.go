@@ -305,11 +305,14 @@ func (p *Process) unloadPyxisEventLog(index int) {
 }
 
 func (p *Process) saveAndUnloadPyxisEventLogs() error {
+	p.logger.LogInfo("Saving pyxis event logs")
 	for i, pyxisEventLog := range p.PyxisEventLogs {
+		//-- Skip to next pyxis if current is not loaded
 		if !p.state.IsLoaded(pyxisEventLog.PyxisName) {
 			continue
 		}
 
+		//-- Marshal and write pyxis event log data to csv file
 		p.logger.LogInfo(fmt.Sprintf("Saving %s Pyxis event log", pyxisEventLog.PyxisName))
 		logFile, err := os.OpenFile(filepath.Join(p.pathToData, pyxisEventLogsFolder, pyxisEventLog.PyxisName+".csv"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
@@ -324,6 +327,7 @@ func (p *Process) saveAndUnloadPyxisEventLogs() error {
 			return err
 		}
 
+		//-- Marshall and write pyxis event log settings data
 		settings := struct {
 			StartDateTime     time.Time
 			LastEventDateTime time.Time
@@ -353,7 +357,30 @@ func (p *Process) saveAndUnloadPyxisEventLogs() error {
 			return err
 		}
 
+		//-- Marshall and write control event log data
+		data, err = json.Marshal(&pyxisEventLog.ControlEventLog)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Error marshalling control event log for %s Pyxis: %s", pyxisEventLog.PyxisName, err.Error()))
+			return err
+		}
+
+		controlFile, err := os.OpenFile(filepath.Join(p.pathToData, controlEventLogsFolder, pyxisEventLog.PyxisName+".json"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Error opening %s control event log: %s", pyxisEventLog.PyxisName, err.Error()))
+			return err
+		}
+		defer controlFile.Close()
+
+		_, err = controlFile.Write(data)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Error saving %s control event log: %s", pyxisEventLog.PyxisName, err.Error()))
+			return err
+		}
+
+		//-- Remove pyxis from list of loaded event logs
+		p.logger.LogInfo(fmt.Sprintf("%s pyxis event log saved", pyxisEventLog.PyxisName))
 		p.unloadPyxisEventLog(i)
+		p.logger.LogInfo(fmt.Sprintf("%s pyxis event log unloaded", pyxisEventLog.PyxisName))
 	}
 
 	return nil
