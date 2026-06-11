@@ -64,7 +64,7 @@ func (c *ControlEventLog) GetLoggedPyxisEventKeys() map[uuid.UUID]struct{} {
 	return eventKeys
 }
 
-func (c *ControlEventLog) SaveControlEventLog(p *Process) error {
+func (c *ControlEventLog) Save(p *Process) error {
 	//-- Marshall and write control event log data
 	data, err := json.Marshal(&c.Log)
 	if err != nil {

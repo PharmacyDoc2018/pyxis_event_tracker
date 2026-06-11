@@ -309,7 +309,10 @@ func (p *Process) saveAndUnloadPyxisEventLogs() error {
 	for i, pyxisEventLog := range p.PyxisEventLogs {
 		//-- Skip to next pyxis if current is not loaded
 		if !p.state.IsLoaded(pyxisEventLog.PyxisName) {
-			//-- ADD CALL TO SAVE CONTROL EVENT LOG
+			//-- Save control event log as these stay loaded
+			if err := pyxisEventLog.ControlEventLog.Save(p); err != nil {
+				return err
+			}
 			continue
 		}
 
