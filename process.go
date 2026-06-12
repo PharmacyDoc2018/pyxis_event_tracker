@@ -20,7 +20,7 @@ const pyxisEventLogSettingsFolder = "log_settings"
 const controlEventLogsFolder = "control_logs"
 
 type Process struct {
-	PyxisEventLogs     []PyxisEventLog
+	PyxisEventLogs     []*PyxisEventLog
 	pathToData         string
 	logger             processLogger
 	state              *processState
@@ -42,7 +42,7 @@ func (p *Process) startupLogsCheck() {
 		p.logger.LogInfo("Checking ControlEventLog connections")
 		for i, log := range p.PyxisEventLogs {
 			if log.ControlEventLog.pyxisEventLog == nil {
-				log.ControlEventLog.pyxisEventLog = &p.PyxisEventLogs[i]
+				log.ControlEventLog.pyxisEventLog = p.PyxisEventLogs[i]
 				p.logger.LogInfo(fmt.Sprintf("PyxisEventLog pointer created for %s ControlEventLog", log.PyxisName))
 			}
 		}
@@ -103,11 +103,16 @@ func (p *Process) createNewPyxisEventLog(pyxisName string, startDateTime time.Ti
 		}
 	}
 
-	p.PyxisEventLogs = append(p.PyxisEventLogs, PyxisEventLog{
+	newPyxisLog := &PyxisEventLog{
 		Log:           []PyxisEvent{},
 		StartDateTime: startDateTime,
 		PyxisName:     pyxisName,
-	})
+	}
+	newPyxisLog.ControlEventLog = &ControlEventLog{
+		pyxisEventLog: newPyxisLog,
+	}
+
+	p.PyxisEventLogs = append(p.PyxisEventLogs, newPyxisLog)
 	p.logger.LogInfo(fmt.Sprintf("New Pyxis event log: %s added. Logging events starting on or after %s.",
 		pyxisName,
 		startDateTime.Format("2006-01-02 1504")))

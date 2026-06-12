@@ -71,7 +71,7 @@ func (c *ControlEventLog) AddUnmatchedEvents(events []PyxisEvent) {
 
 func (c *ControlEventLog) Save(p *Process) error {
 	//-- Marshall and write control event log data
-	data, err := json.Marshal(&c.Log)
+	data, err := json.Marshal(&c)
 	if err != nil {
 		p.logger.LogError(fmt.Sprintf("Error marshalling control event log for %s Pyxis: %s", c.pyxisEventLog.PyxisName, err.Error()))
 		return err

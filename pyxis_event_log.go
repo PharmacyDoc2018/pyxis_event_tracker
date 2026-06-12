@@ -37,7 +37,7 @@ type PyxisEvent struct {
 
 type PyxisEventLog struct {
 	Log               []PyxisEvent
-	ControlEventLog   ControlEventLog
+	ControlEventLog   *ControlEventLog
 	StartDateTime     time.Time
 	LastEventDateTime time.Time
 	PyxisName         string
@@ -275,13 +275,13 @@ func (p *PyxisEventLog) checkForNewControlEvents() logResponder {
 
 func (p *Process) saveAndUnloadPyxisEventLogs() error {
 	p.logger.LogInfo("Saving pyxis event logs")
-	for _, pyxisEventLog := range p.PyxisEventLogs {
+	for i, pyxisEventLog := range p.PyxisEventLogs {
+		//-- Save control event log as these stay loaded
+		if err := p.PyxisEventLogs[i].ControlEventLog.Save(p); err != nil {
+			return err
+		}
 		//-- Skip to next pyxis if current is not loaded
 		if !p.state.IsLoaded(pyxisEventLog.PyxisName) {
-			//-- Save control event log as these stay loaded
-			if err := pyxisEventLog.ControlEventLog.Save(p); err != nil {
-				return err
-			}
 			continue
 		}
 
@@ -405,13 +405,13 @@ func (p *Process) loadPyxisEventlog(pyxis string) error {
 
 	pyxisEventLog := PyxisEventLog{
 		Log:               log,
-		ControlEventLog:   controlLog,
+		ControlEventLog:   &controlLog,
 		StartDateTime:     settings.StartDateTime,
 		LastEventDateTime: settings.LastEventDateTime,
 		PyxisName:         pyxis,
 	}
 
-	p.PyxisEventLogs = append(p.PyxisEventLogs, pyxisEventLog)
+	p.PyxisEventLogs = append(p.PyxisEventLogs, &pyxisEventLog)
 	p.state.PyxisEventLogLoaded(pyxis)
 	return nil
 
@@ -481,14 +481,14 @@ func (p *Process) loadPyxisEventLogs() error {
 	}
 
 	//-- Merge unmatchedLogs and unmatchedSettings
-	pyxisEventLogs := []PyxisEventLog{}
+	pyxisEventLogs := []*PyxisEventLog{}
 	matchedLogs := []unmatchedLog{}
 	matchedSettings := []logSettings{}
 
 	for i := range unmatchedLogs {
 		for j := range unmatchedSettings {
 			if unmatchedLogs[i].Name == unmatchedSettings[j].PyxisName {
-				pyxisEventLogs = append(pyxisEventLogs, PyxisEventLog{
+				pyxisEventLogs = append(pyxisEventLogs, &PyxisEventLog{
 					Log:               unmatchedLogs[i].Logs,
 					StartDateTime:     unmatchedSettings[j].StartDateTime,
 					LastEventDateTime: unmatchedSettings[j].LastEventDateTime,
@@ -517,8 +517,10 @@ func (p *Process) loadPyxisEventLogs() error {
 		//-- Check if control event log file exists. Add if doesn't exist
 		if _, err := os.Stat(filepath.Join(p.pathToData, controlEventLogsFolder, pyxisEventLog.PyxisName+".json")); err != nil {
 			if os.IsNotExist(err) {
-				pyxisEventLog.ControlEventLog = ControlEventLog{
-					pyxisEventLog: &p.PyxisEventLogs[i],
+				p.PyxisEventLogs[i].ControlEventLog = &ControlEventLog{
+					Log:             []ControlEventTrail{},
+					UnmatchedEvents: []PyxisEvent{},
+					pyxisEventLog:   p.PyxisEventLogs[i],
 				}
 				pyxisEventLogs = append(pyxisEventLogs, pyxisEventLog)
 				continue
@@ -542,7 +544,7 @@ func (p *Process) loadPyxisEventLogs() error {
 		}
 
 		//-- Link PyxisEventLog pointer in ControlEventLog
-		p.PyxisEventLogs[i].ControlEventLog.pyxisEventLog = &p.PyxisEventLogs[i]
+		p.PyxisEventLogs[i].ControlEventLog.pyxisEventLog = p.PyxisEventLogs[i]
 
 		//-- Add pyxis name to list of loaded pyxis event logs in process state
 		logErr := p.state.PyxisEventLogLoaded(pyxisEventLog.PyxisName)
