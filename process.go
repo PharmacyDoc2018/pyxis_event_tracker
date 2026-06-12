@@ -186,6 +186,11 @@ func initProcess() *Process {
 	//-- Check for new Pyxis events
 	p.startupLogsCheck()
 
+	//-- Check for new control events
+	for i := range p.PyxisEventLogs {
+		p.logger.Log(p.PyxisEventLogs[i].checkForNewControlEvents())
+	}
+
 	//-- unload Pyxis event logs from memory
 	p.saveAndUnloadPyxisEventLogs()
 

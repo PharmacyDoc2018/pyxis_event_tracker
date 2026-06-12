@@ -229,16 +229,53 @@ func (p *PyxisEventLog) ParseEventsAndAdd(events []database.PyxisEventResponse) 
 
 }
 
-func (p *Process) unloadPyxisEventLog(index int) {
-	p.PyxisEventLogs[index].Log = []PyxisEvent{}
-	p.state.PyxisEventLogUnloaded(p.PyxisEventLogs[index].PyxisName)
+func (p *PyxisEventLog) UnloadPyxisEvents() {
+	p.Log = []PyxisEvent{}
 }
 
-//func (p *Process) checkForNewControlEvents()
+func (p *PyxisEventLog) checkForNewControlEvents() logResponder {
+	logger := logResponder{}
+	logger.AddInfo("Checking for new control events")
+
+	//-- Define med class codes that are controlled in map for checking
+	controlClassCodes := map[string]struct{}{
+		"2": struct{}{},
+		"3": struct{}{},
+		"4": struct{}{},
+		"5": struct{}{},
+	}
+
+	//-- Create uuid slice of control pyxis events
+	controlEvents := []PyxisEvent{}
+	for _, event := range p.Log {
+		if _, okay := controlClassCodes[event.MedClassCode]; okay {
+			controlEvents = append(controlEvents, event)
+		}
+	}
+
+	unmatchedEvents := []PyxisEvent{}
+	loggedControlEvents := p.ControlEventLog.GetLoggedControlEventKeys()
+
+	for _, controlEvent := range controlEvents {
+		if _, okay := loggedControlEvents[controlEvent.ItemTransactionKey]; !okay {
+			unmatchedEvents = append(unmatchedEvents, controlEvent)
+		}
+	}
+
+	if len(unmatchedEvents) == 0 {
+		logger.AddInfo("No new control events found")
+	} else {
+		logger.AddInfo(fmt.Sprintf("%d new control events found. Adding to unmatched control log", len(unmatchedEvents)))
+	}
+
+	p.ControlEventLog.AddUnmatchedEvents(unmatchedEvents)
+	return logger
+
+}
 
 func (p *Process) saveAndUnloadPyxisEventLogs() error {
 	p.logger.LogInfo("Saving pyxis event logs")
-	for i, pyxisEventLog := range p.PyxisEventLogs {
+	for _, pyxisEventLog := range p.PyxisEventLogs {
 		//-- Skip to next pyxis if current is not loaded
 		if !p.state.IsLoaded(pyxisEventLog.PyxisName) {
 			//-- Save control event log as these stay loaded
@@ -315,7 +352,8 @@ func (p *Process) saveAndUnloadPyxisEventLogs() error {
 
 		//-- Remove pyxis from list of loaded event logs
 		p.logger.LogInfo(fmt.Sprintf("%s pyxis event log saved", pyxisEventLog.PyxisName))
-		p.unloadPyxisEventLog(i)
+		pyxisEventLog.UnloadPyxisEvents()
+		p.state.PyxisEventLogUnloaded(pyxisEventLog.PyxisName)
 		p.logger.LogInfo(fmt.Sprintf("%s pyxis event log unloaded", pyxisEventLog.PyxisName))
 	}
 

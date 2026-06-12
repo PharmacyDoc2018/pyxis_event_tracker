@@ -38,8 +38,9 @@ type ControlEventTrail struct {
 }
 
 type ControlEventLog struct {
-	Log           []ControlEventTrail
-	pyxisEventLog *PyxisEventLog
+	Log             []ControlEventTrail
+	UnmatchedEvents []PyxisEvent
+	pyxisEventLog   *PyxisEventLog
 }
 
 func (c *ControlEventLog) Sort() {
@@ -48,7 +49,7 @@ func (c *ControlEventLog) Sort() {
 	})
 }
 
-func (c *ControlEventLog) GetLoggedPyxisEventKeys() map[uuid.UUID]struct{} {
+func (c *ControlEventLog) GetLoggedControlEventKeys() map[uuid.UUID]struct{} {
 	eventKeys := map[uuid.UUID]struct{}{}
 
 	for _, controlEventTrail := range c.Log {
@@ -62,6 +63,10 @@ func (c *ControlEventLog) GetLoggedPyxisEventKeys() map[uuid.UUID]struct{} {
 	}
 
 	return eventKeys
+}
+
+func (c *ControlEventLog) AddUnmatchedEvents(events []PyxisEvent) {
+	c.UnmatchedEvents = append(c.UnmatchedEvents, events...)
 }
 
 func (c *ControlEventLog) Save(p *Process) error {
