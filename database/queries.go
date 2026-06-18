@@ -202,14 +202,17 @@ type MarActionResponse struct {
 }
 
 type GetMarAdminActionsByPatientDayMedIDsParams struct {
-	Date   time.Time
-	DeptID string
-	Mrn    string
-	MedIDs []string
+	Date    time.Time
+	DeptIDs []string
+	Mrn     string
+	MedIDs  []string
 }
 
 func (q *Queries) GetMarAdminActionsByPatientDayMedIDs(ctx context.Context, arg GetMarAdminActionsByPatientDayMedIDsParams) ([]MarActionResponse, error) {
-	placeholders := make([]string, len(arg.MedIDs))
+	deptIdPlaceholders := make([]string, len(arg.DeptIDs))
+	deptIdArgs := make([]any, len(arg.DeptIDs))
+
+	medIdPlaceholders := make([]string, len(arg.MedIDs))
 	medIDArgs := make([]any, len(arg.MedIDs))
 
 	h, m, s := arg.Date.Clock()
@@ -222,15 +225,19 @@ func (q *Queries) GetMarAdminActionsByPatientDayMedIDs(ctx context.Context, arg 
 	allArgs := []any{
 		sql.Named("start", arg.Date),
 		sql.Named("end", endDate),
-		sql.Named("dept", arg.DeptID),
 		sql.Named("mrn", arg.Mrn),
 	}
 
+	for i, deptID := range arg.DeptIDs {
+		deptIdPlaceholders[i] = fmt.Sprintf("@d%d", i)
+		deptIdArgs[i] = sql.Named(fmt.Sprintf("d%d", i), deptID)
+	}
+	allArgs = append(allArgs, deptIdArgs...)
+
 	for i, medID := range arg.MedIDs {
-		placeholders[i] = fmt.Sprintf("@p%d", i)
+		medIdPlaceholders[i] = fmt.Sprintf("@p%d", i)
 		medIDArgs[i] = sql.Named(fmt.Sprintf("p%d", i), medID)
 	}
-
 	allArgs = append(allArgs, medIDArgs...)
 
 	query := fmt.Sprintf(`
@@ -261,11 +268,12 @@ WHERE mc.FilteredMARAction IN (
 )
 AND ma.SAVED_TIME >= @start
 AND ma.SAVED_TIME < @end
-AND ma.MAR_ADMIN_DEPT_ID = @dept
+AND ma.MAR_ADMIN_DEPT_ID IN (%s)
 AND pat.PAT_MRN_ID = @mrn
 AND o.MEDICATION_ID IN (%s)
 ORDER BY ma.SAVED_TIME;
-`, strings.Join(placeholders, ","))
+`, strings.Join(deptIdPlaceholders, ","),
+		strings.Join(medIdPlaceholders, ","))
 
 	rows, err := q.db.QueryContext(ctx, query, allArgs...)
 	if err != nil {

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -55,6 +54,21 @@ func timeToday() time.Time {
 	return today
 }
 
+func timeStartDay(t time.Time) time.Time {
+	startDay := time.Date(
+		t.Year(),
+		t.Month(),
+		t.Day(),
+		0,
+		0,
+		0,
+		0,
+		t.Location(),
+	)
+
+	return startDay
+}
+
 func isSameDay(timeOne, timeTwo time.Time) bool {
 	return timeOne.Year() == timeTwo.Year() &&
 		timeOne.Month() == timeTwo.Month() &&
@@ -66,16 +80,24 @@ func isNumeric(s string) bool {
 	return err == nil
 }
 
-func isStartQuoteWord(word string) (bool, string) {
-	if !strings.Contains(word, "\"") {
-		return false, ""
-	}
+func addFloat(x, y float64) float64 {
+	m := 10000.0
 
-	wordSlices := []rune(word)
-	if wordSlices[0] != '"' {
-		return false, ""
-	}
+	xmInt := int(x * m)
+	ymInt := int(y * m)
 
-	wordNoQuote := string(wordSlices[1:])
-	return true, wordNoQuote
+	zmInt := xmInt + ymInt
+	return float64(zmInt) / m
+
+}
+
+func subtractFloat(x, y float64) float64 {
+	m := 10000.0
+
+	xmInt := int(x * m)
+	ymInt := int(y * m)
+
+	zmInt := xmInt - ymInt
+	return float64(zmInt) / m
+
 }

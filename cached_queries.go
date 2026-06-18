@@ -49,7 +49,11 @@ func getPyxisEvents(p *Process, params database.GetPyxisEventsForDeviceByDateRan
 func getMarActions(p *Process, params database.GetMarAdminActionsByPatientDayMedIDsParams) ([]database.MarActionResponse, error) {
 	key := "GetMarAdminActionsByPatientDayMedIDs"
 	key += params.Date.Format("2006-01-02 1504")
-	key += params.DeptID
+
+	for _, deptID := range params.DeptIDs {
+		key += deptID
+	}
+
 	key += params.Mrn
 
 	for _, medID := range params.MedIDs {
@@ -60,13 +64,13 @@ func getMarActions(p *Process, params database.GetMarAdminActionsByPatientDayMed
 	if logErr != nil {
 		p.logger.LogInfo(fmt.Sprintf("Query Started. Getting MAR actions for MRN %s in department %s on %s for unknown itemID",
 			params.Mrn,
-			params.DeptID,
+			params.DeptIDs,
 			params.Date.Format("2006-01-02")))
 
 	} else {
 		p.logger.LogInfo(fmt.Sprintf("Query Started. Getting MAR actions for MRN %s in department %s on %s for itemID %s",
 			params.Mrn,
-			params.DeptID,
+			params.DeptIDs,
 			params.Date.Format("2006-01-02"),
 			itemID))
 

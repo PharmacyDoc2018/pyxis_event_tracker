@@ -58,6 +58,17 @@ func (e *ERxItemIdLinks) GetItemId(erx string) (string, *logError) {
 	return itemId.ItemID, nil
 }
 
+func (e *ERxItemIdLinks) GetMedIds(itemID string) []string {
+	medIDs := []string{}
+	for _, val := range e.Map {
+		if val.ItemID == itemID {
+			medIDs = append(medIDs, val.ERx)
+		}
+	}
+
+	return medIDs
+}
+
 func initERxItemIdLink() *ERxItemIdLinks {
 	e := ERxItemIdLinks{}
 	e.Map = map[string]ERxItemIdLink{}

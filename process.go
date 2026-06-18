@@ -122,6 +122,113 @@ func (p *Process) createNewPyxisEventLog(pyxisName string, startDateTime time.Ti
 	return nil
 }
 
+func (p *Process) matchControlEventActions() {
+	for i := range p.PyxisEventLogs {
+		p.logger.LogInfo(fmt.Sprintf("Starting control event matching for %s", p.PyxisEventLogs[i].PyxisName))
+
+		//-- If no unmatched events, skip to next Pyxis
+		if len(p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents) == 0 {
+			p.logger.LogInfo(fmt.Sprintf("No unmatched control events for %s", p.PyxisEventLogs[i].PyxisName))
+			continue
+		}
+
+		coveredDeptIDs, logErr := p.departmentCoverage.GetCoveredDepartments(p.PyxisEventLogs[i].PyxisName)
+		if logErr != nil {
+			p.logger.LogError(logErr.logMessage + " Unable to match control events")
+			continue
+		}
+
+		//-- Sort unmatched control events by datetime
+		p.PyxisEventLogs[i].ControlEventLog.SortUnmatchedEvents()
+
+		currentDay := time.Time{}
+		currentDayEvents := []PyxisEvent{}
+		dayPatientMap := map[string][]PyxisEvent{}
+		itemIdDayPatientMap := map[string][]PyxisEvent{}
+
+		unmatchedEvents := p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents
+		for len(unmatchedEvents) != 0 {
+			index := 0
+			currentDay = timeStartDay(unmatchedEvents[index].TxDateTime)
+			currentDayEvents = []PyxisEvent{}
+
+			for index < len(unmatchedEvents) &&
+				timeStartDay(unmatchedEvents[index].TxDateTime) == currentDay {
+				currentDayEvents = append(currentDayEvents, unmatchedEvents[index])
+				index++
+			}
+			unmatchedEvents = unmatchedEvents[index:]
+		}
+
+		//-- From day events, create map[mrn][]PyxisEvents. Each key = mrn, val = slice of Pyxis events for that patient
+		dayPatientMap = map[string][]PyxisEvent{}
+		for _, currentDayEvent := range currentDayEvents {
+			if _, okay := dayPatientMap[currentDayEvent.MRN]; !okay {
+				dayPatientMap[currentDayEvent.MRN] = []PyxisEvent{}
+			}
+
+			dayPatientMap[currentDayEvent.MRN] = append(dayPatientMap[currentDayEvent.MRN], currentDayEvent)
+		}
+
+		//-- From day-patient events, create map[itemID][]PyxisEvents. Each val = slice of Pyxis events for that day-pt-itemID
+		for mrn, mrnDayEvents := range dayPatientMap {
+			itemIdDayPatientMap = map[string][]PyxisEvent{}
+			for _, mrnDayEvent := range mrnDayEvents {
+				if _, okay := itemIdDayPatientMap[mrnDayEvent.ItemID]; !okay {
+					itemIdDayPatientMap[mrnDayEvent.ItemID] = []PyxisEvent{}
+				}
+
+				itemIdDayPatientMap[mrnDayEvent.ItemID] = append(itemIdDayPatientMap[mrnDayEvent.ItemID], mrnDayEvent)
+			}
+
+			for itemID, mrnDayItemIdEvents := range itemIdDayPatientMap {
+				medIDs := p.erxItemIdLinks.GetMedIds(itemID)
+				if len(medIDs) == 0 {
+					p.logger.LogError(fmt.Sprintf("Error. No medIDs/ERXs associated with itemID %s. Skipping control event matching for mrn %s on %s for this itemID.",
+						mrn,
+						currentDay.Format("2006-01-02")))
+					continue
+				}
+
+				deptIDs := []string{}
+				for _, dept := range coveredDeptIDs {
+					deptIDs = append(deptIDs, dept.ID)
+				}
+
+				params := database.GetMarAdminActionsByPatientDayMedIDsParams{
+					Date:    currentDay,
+					DeptIDs: deptIDs,
+					Mrn:     mrn,
+					MedIDs:  medIDs,
+				}
+
+				MarActionResponses, err := getMarActions(p, params)
+				if err != nil {
+					p.logger.LogError(fmt.Sprintf("Unable to match control events for mrn %s itemID %s on %s",
+						mrn,
+						itemID,
+						currentDay.Format("2006-01-02")))
+					continue
+				}
+
+				marActions := p.parseMarActions(MarActionResponses)
+
+				p.logger.LogInfo(fmt.Sprintf("Matching control events for mrn %s itemID %s on %s",
+					mrn,
+					itemID,
+					currentDay.Format("2006-01-02")))
+				unmatchedEvents := p.PyxisEventLogs[i].ControlEventLog.MatchEvents(mrnDayItemIdEvents, marActions, currentDay, mrn, itemID)
+				if len(unmatchedEvents) > 0 {
+					p.logger.LogInfo(fmt.Sprintf("Matching complete with %d unmatched events", len(unmatchedEvents)))
+				} else {
+					p.logger.LogInfo("Match complete with no unmatched events")
+				}
+			}
+		}
+
+	}
+}
+
 func initProcess() *Process {
 	p := Process{}
 	p.state = initProcessState()
@@ -191,9 +298,17 @@ func initProcess() *Process {
 	//-- Check for new Pyxis events
 	p.startupLogsCheck()
 
-	//-- Check for new control events
-	for i := range p.PyxisEventLogs {
-		p.logger.Log(p.PyxisEventLogs[i].checkForNewControlEvents())
+	if !p.state.DbConnectionOkay() {
+		p.logger.LogInfo("New control event check and matched skipped - no database connection")
+	} else {
+		//-- Check for new control events -> add them to their ControlEventLog.UnmatchedEvents
+		for i := range p.PyxisEventLogs {
+			p.logger.Log(p.PyxisEventLogs[i].checkForNewControlEvents())
+		}
+
+		//-- Attempt to match events in ControlEventLog.UnmatchedEvents
+		p.matchControlEventActions()
+
 	}
 
 	//-- unload Pyxis event logs from memory
