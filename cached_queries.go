@@ -47,6 +47,11 @@ func getPyxisEvents(p *Process, params database.GetPyxisEventsForDeviceByDateRan
 }
 
 func getMarActions(p *Process, params database.GetMarAdminActionsByPatientDayMedIDsParams) ([]database.MarActionResponse, error) {
+	if p.state.Mode() == TestMode {
+		p.logger.LogInfo("Test mode detected. Func getMarActions returning []database.MarResponse from Process.testMarRes")
+		return p.testMarActionRes, nil
+	}
+
 	key := "GetMarAdminActionsByPatientDayMedIDs"
 	key += params.Date.Format("2006-01-02 1504")
 

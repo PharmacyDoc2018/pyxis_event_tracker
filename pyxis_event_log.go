@@ -411,6 +411,8 @@ func (p *Process) loadPyxisEventlog(pyxis string) error {
 		PyxisName:         pyxis,
 	}
 
+	pyxisEventLog.ControlEventLog.pyxisEventLog = &pyxisEventLog
+
 	p.PyxisEventLogs = append(p.PyxisEventLogs, &pyxisEventLog)
 	p.state.PyxisEventLogLoaded(pyxis)
 	return nil

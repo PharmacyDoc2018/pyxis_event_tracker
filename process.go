@@ -23,6 +23,7 @@ type Process struct {
 	PyxisEventLogs     []*PyxisEventLog
 	pathToData         string
 	logger             processLogger
+	testMarActionRes   []database.MarActionResponse
 	state              *processState
 	erxItemIdLinks     *ERxItemIdLinks
 	departmentCoverage *DepartmentCoverage
@@ -147,13 +148,15 @@ func (p *Process) matchControlEventActions() {
 		itemIdDayPatientMap := map[string][]PyxisEvent{}
 
 		unmatchedEvents := p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents
+		p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents = []PyxisEvent{}
+
 		for len(unmatchedEvents) != 0 {
 			index := 0
 			currentDay = timeStartDay(unmatchedEvents[index].TxDateTime)
 			currentDayEvents = []PyxisEvent{}
 
 			for index < len(unmatchedEvents) &&
-				timeStartDay(unmatchedEvents[index].TxDateTime) == currentDay {
+				timeStartDay(unmatchedEvents[index].TxDateTime).Equal(currentDay) {
 				currentDayEvents = append(currentDayEvents, unmatchedEvents[index])
 				index++
 			}
@@ -163,6 +166,9 @@ func (p *Process) matchControlEventActions() {
 		//-- From day events, create map[mrn][]PyxisEvents. Each key = mrn, val = slice of Pyxis events for that patient
 		dayPatientMap = map[string][]PyxisEvent{}
 		for _, currentDayEvent := range currentDayEvents {
+			if currentDayEvent.MRN == "" {
+				continue
+			}
 			if _, okay := dayPatientMap[currentDayEvent.MRN]; !okay {
 				dayPatientMap[currentDayEvent.MRN] = []PyxisEvent{}
 			}
@@ -221,6 +227,7 @@ func (p *Process) matchControlEventActions() {
 				unmatchedEvents := p.PyxisEventLogs[i].ControlEventLog.MatchEvents(mrnDayItemIdEvents, marActions, currentDay, mrn, itemID)
 				if len(unmatchedEvents) > 0 {
 					p.logger.LogInfo(fmt.Sprintf("Matching complete with %d unmatched events", len(unmatchedEvents)))
+					p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents = append(p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents, unmatchedEvents...)
 				} else {
 					p.logger.LogInfo("Match complete with no unmatched events")
 				}

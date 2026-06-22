@@ -102,6 +102,30 @@ func (c *ControlEventLog) Save(p *Process) error {
 func (c *ControlEventLog) MatchEvents(pyxisEvents []PyxisEvent, marActions []MarAction, date time.Time, mrn, itemID string) []PyxisEvent {
 	allEvents := []EventTrailItem{}
 
+	//---------------- FOR TESTING DELETE LATER ----------------------//
+	//fmt.Println("Pyxis events to match:")
+	//for _, event := range pyxisEvents {
+	//	fmt.Printf("%s event %s on %s by %s for mrn %s\n",
+	//		event.MedDisplayName,
+	//		event.TransactionType,
+	//		event.TxDateTime.Format("2006-01-02 1504"),
+	//		event.UserName,
+	//		event.MRN)
+	//}
+	//fmt.Println()
+
+	//fmt.Println("MAR actions to match:")
+	//for _, action := range marActions {
+	//fmt.Printf("%s action %s on %s by %s for mrn %s\n",
+	//action.DisplayName,
+	//action.MarAction,
+	//action.SavedTime.Format("2006-01-02 1504"),
+	//action.UserName,
+	//action.MRN)
+	//}
+	//fmt.Println()
+	//-------------------------------------------------------------//
+
 	for _, event := range pyxisEvents {
 		allEvents = append(allEvents, EventTrailItem{
 			Type:       pyxisEvent,
@@ -135,6 +159,34 @@ func (c *ControlEventLog) MatchEvents(pyxisEvents []PyxisEvent, marActions []Mar
 		return timeOne.Before(timeTwo)
 	})
 
+	//------------ FOR TESTING DELETE LATER --------------------//
+
+	//fmt.Println("Pyxis events and Mar actions sorted into single list:")
+	//for i, event := range allEvents {
+	//switch event.Type {
+	//case pyxisEvent:
+	//fmt.Printf("%d. Pyxis Event: %s event %s on %s by %s for mrn %s\n",
+	//i+1,
+	//event.PyxisEvent.MedDisplayName,
+	//event.PyxisEvent.TransactionType,
+	//event.PyxisEvent.TxDateTime.Format("2006-01-02 1504"),
+	//event.PyxisEvent.UserName,
+	//event.PyxisEvent.MRN)
+
+	//case marAction:
+	//fmt.Printf("%d. MAR Action: %s action %s on %s by %s for mrn %s\n",
+	//i+1,
+	//event.MarAction.DisplayName,
+	//event.MarAction.MarAction,
+	//event.MarAction.SavedTime.Format("2006-01-02 1504"),
+	//event.MarAction.UserName,
+	//event.MarAction.MRN)
+
+	//}
+	//}
+	//fmt.Println()
+	//-------------------------------------------------------//
+
 	controlEventTrail := ControlEventTrail{
 		MRN:         mrn,
 		ItemID:      itemID,
@@ -165,22 +217,102 @@ func (c *ControlEventLog) MatchEvents(pyxisEvents []PyxisEvent, marActions []Mar
 		Done:                   false,
 	}
 
+	//fmt.Printf("Starting matching loop. MatchStatus.Done = %t\n\n", matchStatus.Done) //--DELETE AFTER TEST
 	for !matchStatus.Done {
+		//-- Reset Match Status
+		matchStatus.InitialRemoveIndex = 0
+		matchStatus.InitialRemoveAmount = 0.0
+		matchStatus.SubsequentRemoveIndexs = []int{}
+		matchStatus.CurrentAmount = 0.0
+		fmt.Println("Match Status Reset!") //-- DELETE AFTER TEST
 		for i, event := range allEvents {
+			//------------------------------DELETE AFTER TEST----------------------------//
+			//fmt.Println("Starting evaluation of next event. Current Match Status:")
+			//fmt.Printf("Initial Remove Index: %d\n", matchStatus.InitialRemoveIndex)
+			//fmt.Printf("Initial Remove Amount: %f\n", matchStatus.InitialRemoveAmount)
+			//fmt.Print("Subsequent Remove Indexes: ")
+			//for _, n := range matchStatus.SubsequentRemoveIndexs {
+			//	fmt.Printf("%d, ", n)
+			//}
+			//fmt.Println()
+			//fmt.Printf("Current amount: %f\n", matchStatus.CurrentAmount)
+			//fmt.Printf("Is Done: %t\n", matchStatus.Done)
+			//fmt.Println()
+			//---------------------------------------------------------------------------//
 			switch event.Type {
 			case pyxisEvent:
 				switch event.PyxisEvent.TransactionType {
 				case "Remove":
+					//------------ DELETE AFTER TEST ____________________________________//
+					//fmt.Println("Current event is a pyxis remove event")
+					//fmt.Printf("%s: %s by %s on %s\n",
+					//event.PyxisEvent.TransactionType,
+					//event.PyxisEvent.MedDisplayName,
+					//event.PyxisEvent.UserName,
+					//event.PyxisEvent.TxDateTime.Format("2006-01-02 1504"))
+					//-------------------------------------------------------------------//
 					if matchStatus.InitialRemoveAmount == 0.0 {
+						//fmt.Println("This remove is an initial remove event") //-- DELETE AFTER TEST
 						matchStatus.InitialRemoveAmount = event.PyxisEvent.AmountReferenced
 						matchStatus.InitialRemoveIndex = i
 						matchStatus.CurrentAmount = event.PyxisEvent.AmountReferenced
+						//-------------DELETE AFTER TEST ----------------------------//
+						//fmt.Println("Updated Match Status after remove:")
+						//fmt.Printf("Initial Remove Index: %d\n", matchStatus.InitialRemoveIndex)
+						//fmt.Printf("Initial Remove Amount: %f\n", matchStatus.InitialRemoveAmount)
+						//fmt.Print("Subsequent Remove Indexes: ")
+						//for _, n := range matchStatus.SubsequentRemoveIndexs {
+						//	fmt.Printf("%d, ", n)
+						//}
+						//fmt.Println()
+						//fmt.Printf("Current amount: %f\n", matchStatus.CurrentAmount)
+						//fmt.Printf("Is Done: %t\n", matchStatus.Done)
+						//fmt.Println()
+						//----------------------------------------------------------------//
 					} else {
+						//fmt.Println("This is a subsequent remove event") //-- DELETE AFTER TEST
 						matchStatus.CurrentAmount = addFloat(matchStatus.CurrentAmount, event.PyxisEvent.AmountReferenced)
 						matchStatus.SubsequentRemoveIndexs = append(matchStatus.SubsequentRemoveIndexs, i)
+						//-------------DELETE AFTER TEST ----------------------------//
+						//fmt.Println("Updated Match Status:")
+						//fmt.Printf("Initial Remove Index: %d\n", matchStatus.InitialRemoveIndex)
+						//fmt.Printf("Initial Remove Amount: %f\n", matchStatus.InitialRemoveAmount)
+						//fmt.Print("Subsequent Remove Indexes: ")
+						//for _, n := range matchStatus.SubsequentRemoveIndexs {
+						//	fmt.Printf("%d, ", n)
+						//}
+						//fmt.Println()
+						//fmt.Printf("Current amount: %f\n", matchStatus.CurrentAmount)
+						//fmt.Printf("Is Done: %t\n", matchStatus.Done)
+						//fmt.Println()
+						//----------------------------------------------------------------//
+
 					}
 				case "Waste":
+					//-------------DELETE AFTER TEST ----------------------------//
+					//fmt.Println("Current event is a pyxis waste event")
+					//fmt.Printf("%s: %s by %s on %s\n",
+					//	event.PyxisEvent.TransactionType,
+					//	event.PyxisEvent.MedDisplayName,
+					//	event.PyxisEvent.UserName,
+					//	event.PyxisEvent.TxDateTime.Format("2006-01-02 1504"))
+					//----------------------------------------------------------------//
+
 					matchStatus.CurrentAmount = subtractFloat(matchStatus.CurrentAmount, event.PyxisEvent.AmountReferenced)
+
+					//-------------DELETE AFTER TEST ----------------------------//
+					//fmt.Println("Updated Match Status:")
+					//fmt.Printf("Initial Remove Index: %d\n", matchStatus.InitialRemoveIndex)
+					//fmt.Printf("Initial Remove Amount: %f\n", matchStatus.InitialRemoveAmount)
+					//fmt.Print("Subsequent Remove Indexes: ")
+					//for _, n := range matchStatus.SubsequentRemoveIndexs {
+					//	fmt.Printf("%d, ", n)
+					//}
+					//fmt.Println()
+					//fmt.Printf("Current amount: %f\n", matchStatus.CurrentAmount)
+					//fmt.Printf("Is Done: %t\n", matchStatus.Done)
+					//fmt.Println()
+					//----------------------------------------------------------------//
 
 				case "IntWaste":
 					matchStatus.CurrentAmount = subtractFloat(matchStatus.CurrentAmount, event.PyxisEvent.AmountReferenced)
@@ -190,7 +322,30 @@ func (c *ControlEventLog) MatchEvents(pyxisEvents []PyxisEvent, marActions []Mar
 				}
 
 			case marAction:
-				matchStatus.CurrentAmount = addFloat(matchStatus.CurrentAmount, event.MarAction.CalcMinDose)
+				//------------ DELETE AFTER TEST ____________________________________//
+				//fmt.Println("Current event is a MAR action event")
+				//fmt.Printf("%s: %s by %s on %s\n",
+				//	event.MarAction.MarAction,
+				//	event.MarAction.DisplayName,
+				//	event.MarAction.UserName,
+				//	event.MarAction.SavedTime.Format("2006-01-02 1504"))
+				//-------------------------------------------------------------------//
+
+				matchStatus.CurrentAmount = subtractFloat(matchStatus.CurrentAmount, event.MarAction.CalcMinDose)
+
+				//-------------DELETE AFTER TEST ----------------------------//
+				//fmt.Println("Updated Match Status:")
+				//fmt.Printf("Initial Remove Index: %d\n", matchStatus.InitialRemoveIndex)
+				//fmt.Printf("Initial Remove Amount: %f\n", matchStatus.InitialRemoveAmount)
+				//fmt.Print("Subsequent Remove Indexes: ")
+				//for _, n := range matchStatus.SubsequentRemoveIndexs {
+				//	fmt.Printf("%d, ", n)
+				//}
+				//fmt.Println()
+				//fmt.Printf("Current amount: %f\n", matchStatus.CurrentAmount)
+				//fmt.Printf("Is Done: %t\n", matchStatus.Done)
+				//fmt.Println()
+				//----------------------------------------------------------------//
 			}
 
 			//-- Check for trail end:
@@ -201,7 +356,7 @@ func (c *ControlEventLog) MatchEvents(pyxisEvents []PyxisEvent, marActions []Mar
 					allEvents = []EventTrailItem{}
 					matchStatus.Done = true
 				} else {
-					allEvents = allEvents[i+2:]
+					allEvents = allEvents[i+1:]
 				}
 
 				tempTrail := newTrail
@@ -266,7 +421,7 @@ func (c *ControlEventLog) MatchEvents(pyxisEvents []PyxisEvent, marActions []Mar
 					allEvents = []EventTrailItem{}
 					matchStatus.Done = true
 				} else {
-					allEvents = allEvents[i+2:]
+					allEvents = allEvents[i+1:]
 					allEvents = append(addBackTrail, allEvents...)
 				}
 				break

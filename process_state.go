@@ -11,6 +11,7 @@ const (
 	Normal = iota
 	LocalOnly
 	SafetyMode
+	TestMode
 )
 
 type processState struct {
@@ -23,6 +24,10 @@ type processState struct {
 }
 
 func (p *processState) UpdateState() {
+	if p.mode == TestMode {
+		return
+	}
+
 	if !p.eRxItemIdLinks {
 		p.mode = SafetyMode
 		return
