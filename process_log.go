@@ -7,18 +7,25 @@ import (
 )
 
 type processLogger struct {
-	file   *os.File
-	logger *log.Logger
+	file      *os.File
+	logger    *log.Logger
+	printToIO bool
 }
 
 func (p processLogger) LogInfo(message string) {
 	prefix := "INFO: "
 	p.logger.Println(prefix + message)
+	if p.printToIO {
+		fmt.Println(prefix + message)
+	}
 }
 
 func (p processLogger) LogError(message string) {
 	prefix := "ERROR: "
 	p.logger.Println(prefix + message)
+	if p.printToIO {
+		fmt.Println(prefix + message)
+	}
 }
 
 func (p processLogger) EndSpace() {

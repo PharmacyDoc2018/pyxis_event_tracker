@@ -22,9 +22,11 @@ const controlEventLogsFolder = "control_logs"
 type Process struct {
 	PyxisEventLogs     []*PyxisEventLog
 	pathToData         string
+	pathToSettings     string
 	logger             processLogger
 	testMarActionRes   []database.MarActionResponse
 	state              *processState
+	settings           *Settings
 	erxItemIdLinks     *ERxItemIdLinks
 	departmentCoverage *DepartmentCoverage
 	db                 *sql.DB
@@ -255,10 +257,17 @@ func initProcess() *Process {
 	connString = os.Getenv("CONNSTRING")
 	processLogPath = os.Getenv("PROCESSLOGPATH")
 	p.pathToData = os.Getenv("DATAPATH")
+	p.pathToSettings = os.Getenv("SETTINGSPATH")
 
 	processLogger := initProcessLogger(processLogPath)
 	p.logger = processLogger
 	p.logger.LogInfo("Application Started")
+
+	err = p.loadSettings()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	p.logger.printToIO = p.settings.PrintLogsToCliIO
 
 	db, err := sql.Open("sqlserver", connString)
 	if err != nil {
@@ -370,6 +379,7 @@ func (p *Process) exit() {
 const defaultEnv = `CONNSTRING=""
 PROCESSLOGPATH="./logs/process_log.txt"
 DATAPATH="./data/"
+SETTINGSPATH="./settings/"
 `
 
 func (p *Process) initialLaunchSetup() error {
@@ -386,6 +396,7 @@ func (p *Process) initialLaunchSetup() error {
 	env.Close()
 	godotenv.Load(".env")
 	p.pathToData = os.Getenv("DATAPATH")
+	p.pathToSettings = os.Getenv("SETTINGSPATH")
 
 	err = os.Mkdir("./logs/", 0755)
 	if err != nil {
@@ -393,6 +404,11 @@ func (p *Process) initialLaunchSetup() error {
 	}
 
 	err = os.Mkdir("./data/", 0755)
+	if err != nil {
+		return err
+	}
+
+	err = os.Mkdir(p.pathToSettings, 0755)
 	if err != nil {
 		return err
 	}
