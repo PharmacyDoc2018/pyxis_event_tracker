@@ -370,3 +370,28 @@ func TestFunctions(t *testing.T) {
 	}
 
 }
+
+func TestLogger(t *testing.T) {
+	logger := initProcessLogger("./test/log.txt")
+
+	logger.LogInfo("first test. regular log info")
+
+	innerTestString := "Inner function return test."
+	outterTestString := "Outter function return test."
+
+	logger.Log(func(s string) *logResponder {
+		lr := logResponder{}
+		lr.AddInfo(s)
+		return &lr
+	}(innerTestString))
+
+	lr := func(s string) logResponder {
+		lr := logResponder{}
+		lr.AddInfo(s)
+		return lr
+	}(outterTestString)
+
+	logger.Log(&lr)
+
+	logger.Close()
+}

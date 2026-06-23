@@ -54,37 +54,37 @@ type logInfo struct {
 }
 
 type logResponse struct {
-	logError *logError
-	logInfo  *logInfo
+	logError logError
+	logInfo  logInfo
 }
 
 type logResponder struct {
 	logResponses []logResponse
 }
 
-func (l logResponder) AddInfo(msg string) {
+func (l *logResponder) AddInfo(msg string) {
 	l.logResponses = append(l.logResponses, logResponse{
-		logInfo: &logInfo{
+		logInfo: logInfo{
 			logMessage: msg,
 		},
 	})
 }
 
-func (l logResponder) AddError(msg string) {
+func (l *logResponder) AddError(msg string) {
 	l.logResponses = append(l.logResponses, logResponse{
-		logError: &logError{
+		logError: logError{
 			logMessage: msg,
 		},
 	})
 }
 
-func (l logResponder) AddResponses(ll logResponder) {
+func (l *logResponder) AddResponses(ll *logResponder) {
 	l.logResponses = append(l.logResponses, ll.logResponses...)
 }
 
-func (p processLogger) Log(l logResponder) {
+func (p processLogger) Log(l *logResponder) {
 	for _, response := range l.logResponses {
-		if response.logError != nil {
+		if response.logError.logMessage != "" {
 			p.LogError(response.logError.logMessage)
 		} else {
 			p.LogInfo(response.logInfo.logMessage)

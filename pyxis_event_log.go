@@ -43,7 +43,7 @@ type PyxisEventLog struct {
 	PyxisName         string
 }
 
-func (p *PyxisEventLog) CleanUp() logResponder {
+func (p *PyxisEventLog) CleanUp() *logResponder {
 	logger := logResponder{}
 
 	//-- resort the events
@@ -88,10 +88,10 @@ func (p *PyxisEventLog) CleanUp() logResponder {
 			p.LastEventDateTime.Format("2006-01-02 1504")))
 	}
 
-	return logger
+	return &logger
 }
 
-func (p *PyxisEventLog) AddPyxisEvents(events []PyxisEvent) logResponder {
+func (p *PyxisEventLog) AddPyxisEvents(events []PyxisEvent) *logResponder {
 	logger := logResponder{}
 	logger.AddInfo(fmt.Sprintf("adding %d events to %s event log",
 		len(events),
@@ -102,7 +102,7 @@ func (p *PyxisEventLog) AddPyxisEvents(events []PyxisEvent) logResponder {
 
 	logger.AddResponses(p.CleanUp())
 
-	return logger
+	return &logger
 }
 
 func (p *PyxisEventLog) lastEventDateString() string {
@@ -113,7 +113,7 @@ func (p *PyxisEventLog) lastEventDateString() string {
 	return p.LastEventDateTime.Format("2006-01-02 15:04")
 }
 
-func (p *PyxisEventLog) ParseEventsAndAdd(events []database.PyxisEventResponse) logResponder {
+func (p *PyxisEventLog) ParseEventsAndAdd(events []database.PyxisEventResponse) *logResponder {
 	parsedEvents := []PyxisEvent{}
 
 	for _, event := range events {
@@ -233,9 +233,9 @@ func (p *PyxisEventLog) UnloadPyxisEvents() {
 	p.Log = []PyxisEvent{}
 }
 
-func (p *PyxisEventLog) checkForNewControlEvents() logResponder {
+func (p *PyxisEventLog) checkForNewControlEvents() *logResponder {
 	logger := logResponder{}
-	logger.AddInfo("Checking for new control events")
+	logger.AddInfo(fmt.Sprintf("Checking for new control events for %s Pyxis", p.PyxisName))
 
 	//-- Define med class codes that are controlled in map for checking
 	controlClassCodes := map[string]struct{}{
@@ -269,7 +269,7 @@ func (p *PyxisEventLog) checkForNewControlEvents() logResponder {
 	}
 
 	p.ControlEventLog.AddUnmatchedEvents(unmatchedEvents)
-	return logger
+	return &logger
 
 }
 
@@ -277,7 +277,9 @@ func (p *Process) saveAndUnloadPyxisEventLogs() error {
 	p.logger.LogInfo("Saving pyxis event logs")
 	for i, pyxisEventLog := range p.PyxisEventLogs {
 		//-- Save control event log as these stay loaded
+		p.logger.LogInfo(fmt.Sprintf("Saving control event log for %s", pyxisEventLog.PyxisName))
 		if err := p.PyxisEventLogs[i].ControlEventLog.Save(p); err != nil {
+			p.logger.LogError("Error. Save failed")
 			return err
 		}
 		//-- Skip to next pyxis if current is not loaded
