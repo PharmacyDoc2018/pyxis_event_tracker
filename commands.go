@@ -85,7 +85,7 @@ func (p *Process) setupCommands() {
 		return nil
 	})
 
-	//-- ERx - ItemID Link Commands:
+	//---------------- ERx - ItemID Link Commands ------------------------//
 	p.cliConfig.AddCommand("add ERxItemId link", func(args []cli.CommandArg) error {
 		p.logger.LogInfo("add ERxItemId link command executed")
 
@@ -143,9 +143,10 @@ func (p *Process) setupCommands() {
 	})
 
 	p.cliConfig.AddCommand("remove ERxItemId link", func(args []cli.CommandArg) error {
-		p.logger.LogInfo("Remove ERxItemId link command executed")
+		p.logger.LogInfo("remove ERxItemId Link command executed")
 
 		erx := ""
+
 		for _, arg := range args {
 			switch arg.Name {
 			case "erx":
@@ -154,25 +155,24 @@ func (p *Process) setupCommands() {
 		}
 
 		if erx == "" {
-			err := fmt.Errorf("error. erx cannot be blank")
-			p.logger.LogError("Command failed: " + err.Error())
-			return err
+			p.logger.LogError("Command failed: erx cannot be blank")
+			return fmt.Errorf("error. erx cannot be blank")
 		}
 
-		itemId, logErr := p.erxItemIdLinks.GetItemId(erx)
+		itemID, logErr := p.erxItemIdLinks.GetItemId(erx)
 		if logErr != nil {
-			p.logger.LogError(logErr.logMessage)
+			p.logger.LogError("Command failed: " + logErr.logMessage)
 			return logErr
 		}
 
 		logErr = p.erxItemIdLinks.Remove(erx)
 		if logErr != nil {
-			p.logger.LogError(logErr.logMessage)
+			p.logger.LogError("Command failed: " + logErr.logMessage)
 			return logErr
 		}
 
-		p.logger.LogInfo(fmt.Sprintf("ERx %s unlinked from ItemId %s", erx, itemId))
-		fmt.Printf("erx %s unlinked from itemid %s\n", erx, itemId)
+		p.logger.LogInfo(fmt.Sprintf("erx %s link removed from itemID %s", erx, itemID))
+		fmt.Printf("erx %s link removed from itemID %s\n", erx, itemID)
 		return nil
 
 	}, cli.CommandArg{
@@ -180,7 +180,7 @@ func (p *Process) setupCommands() {
 		Required: true,
 	})
 
-	//-- Department Coverage Commands:
+	//-------------------- Department Coverage Commands -------------------------//
 	p.cliConfig.AddCommand("add department coverage", func(args []cli.CommandArg) error {
 		p.logger.LogInfo("add department coverage command executed")
 
@@ -350,7 +350,7 @@ func (p *Process) setupCommands() {
 		Required: true,
 	})
 
-	//-- ERX Commands:
+	//------------------ ERX Commands ----------------------//
 	p.cliConfig.AddCommand("list erxs", func(args []cli.CommandArg) error {
 		p.logger.LogInfo("list ERXs command executed")
 
