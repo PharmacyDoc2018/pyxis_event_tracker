@@ -247,4 +247,88 @@ func (p *Process) setupCommands() {
 		Name: "dept_name",
 	})
 
+	p.cliConfig.AddCommand("list erxs", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("list ERXs command executed")
+
+		erxs := p.erxs.GetAll()
+		for _, erx := range erxs {
+			fmt.Printf("%s [%s]\n", erx.DisplayName, erx.MedID)
+		}
+
+		return nil
+	})
+
+	p.cliConfig.AddCommand("add erx", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("add erx command executed")
+
+		erx := ""
+		name := ""
+
+		for _, arg := range args {
+			switch arg.Name {
+			case "erx":
+				erx = arg.Val
+
+			case "name":
+				name = arg.Val
+			}
+		}
+
+		if erx == "" {
+			p.logger.LogError("Command Failed: erx cannot be blank")
+			return fmt.Errorf("error. erx cannot be blank")
+		}
+		if name == "" {
+			p.logger.LogError("Command failed: name cannot be blank")
+			return fmt.Errorf("error name cannot be blank")
+		}
+
+		logErr := p.erxs.Add(erx, name)
+		if logErr != nil {
+			p.logger.LogError("Command failed: " + logErr.logMessage)
+			return logErr
+		}
+
+		p.logger.LogInfo(fmt.Sprintf("%s [%s] added to ERXs", name, erx))
+		fmt.Printf("%s [%s] added to ERXs\n", name, erx)
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "erx",
+		Required: true,
+	}, cli.CommandArg{
+		Name:     "name",
+		Required: true,
+	})
+
+	p.cliConfig.AddCommand("remove erx", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("remove erx command executed")
+
+		erx := ""
+		for _, arg := range args {
+			switch arg.Name {
+			case "erx":
+				erx = arg.Val
+			}
+		}
+
+		if erx == "" {
+			p.logger.LogError("Command failed: erx cannot be blank")
+			return fmt.Errorf("error. erx cannot be blank")
+		}
+
+		logErr := p.erxs.Remove(erx)
+		if logErr != nil {
+			p.logger.LogError("Command failed: " + logErr.logMessage)
+			return logErr
+		}
+
+		p.logger.LogInfo(fmt.Sprintf("erx %s removed", erx))
+		fmt.Printf("erx %s removed\n", erx)
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "erx",
+		Required: true,
+	})
 }

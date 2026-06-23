@@ -27,6 +27,7 @@ type Process struct {
 	testMarActionRes   []database.MarActionResponse
 	state              *processState
 	settings           *Settings
+	erxs               *ERxDict
 	erxItemIdLinks     *ERxItemIdLinks
 	departmentCoverage *DepartmentCoverage
 	db                 *sql.DB
@@ -312,6 +313,12 @@ func initProcess() *Process {
 		fmt.Println(err.Error())
 	}
 
+	p.erxs = initERXs()
+	err = p.erxs.Load(&p)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
 	//-- Check for new Pyxis events
 	p.startupLogsCheck()
 
@@ -365,6 +372,15 @@ func (p *Process) exit() {
 		}
 	} else {
 		p.logger.LogInfo("Department - Coverage links not being saved due to previous load error")
+	}
+
+	if p.state.ERXsOkay() {
+		err := p.erxs.Save(p)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Error while saving: %s", err.Error()))
+		}
+	} else {
+		p.logger.LogInfo("ERXs not being saved due to previous load error")
 	}
 
 	p.cliConfig.Rl.Close()
