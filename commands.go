@@ -85,6 +85,7 @@ func (p *Process) setupCommands() {
 		return nil
 	})
 
+	//-- ERx - ItemID Link Commands:
 	p.cliConfig.AddCommand("add ERxItemId link", func(args []cli.CommandArg) error {
 		p.logger.LogInfo("add ERxItemId link command executed")
 
@@ -179,6 +180,7 @@ func (p *Process) setupCommands() {
 		Required: true,
 	})
 
+	//-- Department Coverage Commands:
 	p.cliConfig.AddCommand("add department coverage", func(args []cli.CommandArg) error {
 		p.logger.LogInfo("add department coverage command executed")
 
@@ -247,6 +249,108 @@ func (p *Process) setupCommands() {
 		Name: "dept_name",
 	})
 
+	p.cliConfig.AddCommand("remove department coverage", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("remove department coverage command executed")
+
+		pyxis := ""
+		deptID := ""
+
+		for _, arg := range args {
+			switch arg.Name {
+			case "pyxis":
+				pyxis = arg.Val
+
+			case "deptID":
+				deptID = arg.Val
+			}
+		}
+
+		if pyxis == "" {
+			p.logger.LogError("Command failed: pyxis cannot be blank")
+			return fmt.Errorf("error. pyxis cannot be blank")
+		}
+
+		if deptID == "" {
+			p.logger.LogError("Command failed: deptID cannot be blank")
+			return fmt.Errorf("error. deptID cannot be blank")
+		}
+
+		depts, logErr := p.departmentCoverage.GetCoveredDepartments(pyxis)
+		if logErr != nil {
+			p.logger.LogError("Command failed: " + logErr.logMessage)
+			return logErr
+		}
+
+		deptToRemove := Department{}
+		for _, dept := range depts {
+			if dept.ID == deptID {
+				deptToRemove = dept
+				break
+			}
+		}
+
+		logErr = p.departmentCoverage.Remove(pyxis, deptToRemove)
+		if logErr != nil {
+			p.logger.LogError("Command Failed: " + logErr.logMessage)
+			return logErr
+		}
+
+		p.logger.LogInfo(fmt.Sprintf("%s [%s] removed from %s as a covered department",
+			deptToRemove.Name,
+			deptToRemove.ID,
+			pyxis))
+
+		fmt.Printf("%s [%s] removed from %s as a covered department\n",
+			deptToRemove.Name,
+			deptToRemove.ID,
+			pyxis)
+
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "pyxis",
+		Required: true,
+	}, cli.CommandArg{
+		Name:     "deptID",
+		Required: true,
+	})
+
+	p.cliConfig.AddCommand("list department coverage", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("list department coverage command executed")
+
+		pyxis := ""
+
+		for _, arg := range args {
+			switch arg.Name {
+			case "pyxis":
+				pyxis = arg.Val
+			}
+		}
+
+		if pyxis == "" {
+			p.logger.LogError("Command failed: pyxis cannot be blank")
+			return fmt.Errorf("error. pyxis cannot be blank")
+		}
+
+		depts, logError := p.departmentCoverage.GetCoveredDepartments(pyxis)
+		if logError != nil {
+			p.logger.LogError("Command failed: " + logError.logMessage)
+			return logError
+		}
+
+		fmt.Printf("Departments covered by %s:\n", pyxis)
+		for _, dept := range depts {
+			fmt.Printf("%s [%s]\n", dept.Name, dept.ID)
+		}
+
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "pyxis",
+		Required: true,
+	})
+
+	//-- ERX Commands:
 	p.cliConfig.AddCommand("list erxs", func(args []cli.CommandArg) error {
 		p.logger.LogInfo("list ERXs command executed")
 

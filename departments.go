@@ -79,7 +79,7 @@ func (d *DepartmentCoverage) Add(pyxisName string, department Department) *logEr
 	return nil
 }
 
-func (d *DepartmentCoverage) RemovePyxisDepartmentLink(pyxisName string, department Department) *logError {
+func (d *DepartmentCoverage) Remove(pyxisName string, department Department) *logError {
 	if _, okay := d.Map[pyxisName]; !okay {
 		return &logError{
 			errMessage: fmt.Sprintf("error. %s pyxis not found", pyxisName),
