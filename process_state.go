@@ -18,6 +18,7 @@ type processState struct {
 	pyxisLogsLoaded    []string
 	mode               processMode
 	erxs               bool
+	itemIds            bool
 	eRxItemIdLinks     bool
 	departmentCoverage bool
 	dbConnection       bool
@@ -30,6 +31,11 @@ func (p *processState) UpdateState() {
 	}
 
 	if !p.erxs {
+		p.mode = SafetyMode
+		return
+	}
+
+	if !p.itemIds {
 		p.mode = SafetyMode
 		return
 	}
@@ -71,6 +77,8 @@ func (p *processState) GetState() string {
 	res = res + "Mode: " + strconv.Itoa(int(p.mode)) + "\n\n"
 	res = res + "Pyxis Events: " + boolStatus(p.pyxisEventsLoaded) + "\n"
 	res = res + "Database Connection: " + boolStatus(p.dbConnection) + "\n"
+	res = res + "ERXs: " + boolStatus(p.erxs) + "\n"
+	res = res + "ItemIDs: " + boolStatus(p.itemIds) + "\n"
 	res = res + "ERxItemIdLinks: " + boolStatus(p.eRxItemIdLinks) + "\n"
 	res = res + "Department Coverage: " + boolStatus(p.departmentCoverage) + "\n"
 
@@ -83,6 +91,15 @@ func (p *processState) ERXsOkay() bool {
 
 func (p *processState) ERXsLoadSuccessful() {
 	p.erxs = true
+	p.UpdateState()
+}
+
+func (p *processState) ItemIDsOkay() bool {
+	return p.itemIds
+}
+
+func (p *processState) ItemIDsLoadSuccessful() {
+	p.itemIds = true
 	p.UpdateState()
 }
 

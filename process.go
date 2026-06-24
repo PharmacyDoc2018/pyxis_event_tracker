@@ -28,6 +28,7 @@ type Process struct {
 	state              *processState
 	settings           *Settings
 	erxs               *ERxDict
+	itemIDs            *ItemIdDict
 	erxItemIdLinks     *ERxItemIdLinks
 	departmentCoverage *DepartmentCoverage
 	db                 *sql.DB
@@ -319,6 +320,15 @@ func initProcess() *Process {
 		fmt.Println(err.Error())
 	}
 
+	p.itemIDs = initItemIDs()
+	err, lr := p.itemIDs.Load(p.pathToData)
+	p.logger.Log(lr)
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		p.state.ItemIDsLoadSuccessful()
+	}
+
 	//-- Check for new Pyxis events
 	p.startupLogsCheck()
 
@@ -378,9 +388,20 @@ func (p *Process) exit() {
 		err := p.erxs.Save(p)
 		if err != nil {
 			p.logger.LogError(fmt.Sprintf("Error while saving: %s", err.Error()))
+			fmt.Println(err.Error())
 		}
 	} else {
 		p.logger.LogInfo("ERXs not being saved due to previous load error")
+	}
+
+	if p.state.ItemIDsOkay() {
+		err, lr := p.itemIDs.Save(p.pathToData)
+		p.logger.Log(lr)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	} else {
+		p.logger.LogInfo("ItemIDs not being saved due to previous load error")
 	}
 
 	p.cliConfig.Rl.Close()
