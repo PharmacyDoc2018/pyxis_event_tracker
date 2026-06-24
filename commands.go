@@ -512,4 +512,15 @@ func (p *Process) setupCommands() {
 		Name:     "itemID",
 		Required: true,
 	})
+
+	p.cliConfig.AddCommand("list itemIDs", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("list itemIDs command executed")
+
+		itemIDs := p.itemIDs.GetAll()
+		for _, itemID := range itemIDs {
+			fmt.Printf("%s %s\n", itemID.ID, itemID.DisplayName)
+		}
+
+		return nil
+	})
 }
