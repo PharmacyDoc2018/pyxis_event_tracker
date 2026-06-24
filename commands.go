@@ -435,4 +435,49 @@ func (p *Process) setupCommands() {
 		Name:     "erx",
 		Required: true,
 	})
+
+	//----------------------ItemID Commands -------------------------//
+	p.cliConfig.AddCommand("add itemID", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("add itemID command executed")
+
+		itemID := ""
+		name := ""
+
+		for _, arg := range args {
+			switch arg.Name {
+			case "itemID":
+				itemID = arg.Val
+
+			case "name":
+				name = arg.Val
+			}
+		}
+
+		if itemID == "" {
+			p.logger.LogError("Command failed: itemID cannot be blank")
+			return fmt.Errorf("error. itemID cannot be blank")
+		}
+
+		if name == "" {
+			p.logger.LogError("Command failed: name cannot be blank")
+			return fmt.Errorf("error. name cannot be blank")
+		}
+
+		logErr := p.itemIDs.Add(itemID, name)
+		if logErr != nil {
+			p.logger.LogError("Command failed: " + logErr.logMessage)
+			return logErr
+		}
+
+		p.logger.LogInfo(fmt.Sprintf("ItemID %s %s added", itemID, name))
+		fmt.Printf("itemID %s %s added\n", itemID, name)
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "itemID",
+		Required: true,
+	}, cli.CommandArg{
+		Name:     "name",
+		Required: true,
+	})
 }
