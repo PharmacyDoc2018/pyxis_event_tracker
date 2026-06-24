@@ -198,6 +198,8 @@ func (p *Process) matchControlEventActions() {
 						itemID,
 						mrn,
 						currentDay.Format("2006-01-02")))
+
+					unmatchedEvents = append(unmatchedEvents, mrnDayItemIdEvents...)
 					continue
 				}
 
@@ -219,6 +221,8 @@ func (p *Process) matchControlEventActions() {
 						mrn,
 						itemID,
 						currentDay.Format("2006-01-02")))
+
+					unmatchedEvents = append(unmatchedEvents, mrnDayItemIdEvents...)
 					continue
 				}
 
