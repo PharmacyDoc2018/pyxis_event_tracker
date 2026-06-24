@@ -480,4 +480,36 @@ func (p *Process) setupCommands() {
 		Name:     "name",
 		Required: true,
 	})
+
+	p.cliConfig.AddCommand("remove itemID", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("remove itemID command executed")
+
+		itemID := ""
+
+		for _, arg := range args {
+			switch arg.Name {
+			case "itemID":
+				itemID = arg.Val
+			}
+		}
+
+		if itemID == "" {
+			p.logger.LogError("Command failed: itemID cannot be blank")
+			return fmt.Errorf("error. itemID cannot be blank")
+		}
+
+		logErr := p.itemIDs.Remove(itemID)
+		if logErr != nil {
+			p.logger.LogError("Command failed: " + logErr.logMessage)
+			return logErr
+		}
+
+		p.logger.LogInfo(fmt.Sprintf("ItemID %s removed", itemID))
+		fmt.Printf("ItemID %s removed\n", itemID)
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "itemID",
+		Required: true,
+	})
 }
