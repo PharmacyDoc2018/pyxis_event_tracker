@@ -37,8 +37,8 @@ func (i *ItemIdDict) Add(id, name string) *logError {
 func (i *ItemIdDict) Remove(id string) *logError {
 	if _, okay := i.Map[id]; !okay {
 		return &logError{
-			errMessage: fmt.Sprintf("error. itemId %s not found"),
-			logMessage: fmt.Sprintf("Error. ItemID %s not found"),
+			errMessage: fmt.Sprintf("error. itemId %s not found", id),
+			logMessage: fmt.Sprintf("Error. ItemID %s not found", id),
 		}
 	}
 
