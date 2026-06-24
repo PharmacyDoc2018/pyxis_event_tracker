@@ -69,6 +69,21 @@ func (e *ERxItemIdLinks) GetMedIds(itemID string) []string {
 	return medIDs
 }
 
+func (e *ERxItemIdLinks) GetAllItemIds() []string {
+	itemIDsMap := map[string]struct{}{}
+	itemIDs := []string{}
+
+	for _, link := range e.Map {
+		itemIDsMap[link.ItemID] = struct{}{}
+	}
+
+	for id := range itemIDsMap {
+		itemIDs = append(itemIDs, id)
+	}
+
+	return itemIDs
+}
+
 func initERxItemIdLink() *ERxItemIdLinks {
 	e := ERxItemIdLinks{}
 	e.Map = map[string]ERxItemIdLink{}

@@ -56,6 +56,18 @@ func (i *ItemIdDict) GetAll() []ItemId {
 	return ids
 }
 
+func (i *ItemIdDict) DisplayName(id string) (string, *logError) {
+	itemID, okay := i.Map[id]
+	if !okay {
+		return "", &logError{
+			errMessage: fmt.Sprintf("error. erx %s not found", id),
+			logMessage: fmt.Sprintf("Error. ERx %s not found", id),
+		}
+	}
+
+	return itemID.DisplayName, nil
+}
+
 func (i *ItemIdDict) Load(dataPath string) (error, *logResponder) {
 	logger := logResponder{}
 	logger.AddInfo("Loading ItemIDs")

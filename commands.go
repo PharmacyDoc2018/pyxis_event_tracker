@@ -180,6 +180,23 @@ func (p *Process) setupCommands() {
 		Required: true,
 	})
 
+	p.cliConfig.AddCommand("list all ERxItemId links", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("list all ERxItemId links command executed")
+
+		itemIDs := p.erxItemIdLinks.GetAllItemIds()
+		for _, itemID := range itemIDs {
+			medIDs := p.erxItemIdLinks.GetMedIds(itemID)
+			fmt.Printf("ERXs linked to itemID %s %s:\n", itemID, quickDisplayName(p.itemIDs.DisplayName, itemID))
+			for _, medID := range medIDs {
+				fmt.Printf("   %s [%s]\n", quickDisplayName(p.erxs.DisplayName, medID), medID)
+			}
+			fmt.Println()
+		}
+
+		return nil
+
+	})
+
 	//-------------------- Department Coverage Commands -------------------------//
 	p.cliConfig.AddCommand("add department coverage", func(args []cli.CommandArg) error {
 		p.logger.LogInfo("add department coverage command executed")

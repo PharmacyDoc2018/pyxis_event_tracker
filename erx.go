@@ -56,6 +56,18 @@ func (e *ERxDict) GetAll() []ERx {
 	return erxs
 }
 
+func (e *ERxDict) DisplayName(medID string) (string, *logError) {
+	erx, okay := e.Map[medID]
+	if !okay {
+		return "", &logError{
+			errMessage: fmt.Sprintf("error. erx %s not found", medID),
+			logMessage: fmt.Sprintf("Error. ERx %s not found", medID),
+		}
+	}
+
+	return erx.DisplayName, nil
+}
+
 func (e *ERxDict) Load(p *Process) error {
 	p.logger.LogInfo("Loading ERXs")
 

@@ -101,3 +101,11 @@ func subtractFloat(x, y float64) float64 {
 	return float64(zmInt) / m
 
 }
+
+func quickDisplayName(f func(string) (string, *logError), s string) string {
+	r, e := f(s)
+	if e != nil {
+		return "unknown"
+	}
+	return r
+}
