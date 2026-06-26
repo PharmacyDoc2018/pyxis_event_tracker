@@ -46,40 +46,34 @@ func getPyxisEvents(p *Process, params database.GetPyxisEventsForDeviceByDateRan
 
 }
 
-func getMarActions(p *Process, params database.GetMarAdminActionsByPatientDayMedIDsParams) ([]database.MarActionResponse, error) {
+func getMarActions(p *Process, params database.GetMarAdminActionsByPatientsDaysMedIDsParams) ([]database.MarActionResponse, error) {
 	if p.state.Mode() == TestMode {
 		p.logger.LogInfo("Test mode detected. Func getMarActions returning []database.MarResponse from Process.testMarRes")
 		return p.testMarActionRes, nil
 	}
 
 	key := "GetMarAdminActionsByPatientDayMedIDs"
-	key += params.Date.Format("2006-01-02 1504")
+	key += params.DateStart.Format("2006-01-02 1504")
+	key += params.DateEnd.Format("2006-01-02 1504")
 
 	for _, deptID := range params.DeptIDs {
 		key += deptID
 	}
 
-	key += params.Mrn
+	for _, mrn := range params.Mrns {
+		key += mrn
+	}
 
 	for _, medID := range params.MedIDs {
 		key += medID
 	}
 
-	itemID, logErr := p.erxItemIdLinks.GetItemId(params.MedIDs[0])
-	if logErr != nil {
-		p.logger.LogInfo(fmt.Sprintf("Query Started. Getting MAR actions for MRN %s in department %s on %s for unknown itemID",
-			params.Mrn,
-			params.DeptIDs,
-			params.Date.Format("2006-01-02")))
-
-	} else {
-		p.logger.LogInfo(fmt.Sprintf("Query Started. Getting MAR actions for MRN %s in department %s on %s for itemID %s",
-			params.Mrn,
-			params.DeptIDs,
-			params.Date.Format("2006-01-02"),
-			itemID))
-
-	}
+	p.logger.LogInfo(fmt.Sprintf("Query Started. Getting MAR actions for %d MRN(s) in department %s from %s to %s for %d medID(s)",
+		len(params.Mrns),
+		params.DeptIDs,
+		params.DateStart.Format("2006-01-02"),
+		params.DateEnd.Format("2006-01-02"),
+		len(params.MedIDs)))
 
 	data, okay := p.cache.Get(key)
 	if okay {
@@ -93,7 +87,7 @@ func getMarActions(p *Process, params database.GetMarAdminActionsByPatientDayMed
 	}
 
 	p.logger.LogInfo("Query results not found in cache. Querying database")
-	actions, err := p.dbq.GetMarAdminActionsByPatientDayMedIDs(context.Background(), params)
+	actions, err := p.dbq.GetMarAdminActionsByPatientsDaysMedIDs(context.Background(), params)
 	if err != nil {
 		p.logger.LogError(fmt.Sprintf("Error executing SQL query: %s", err.Error()))
 		return nil, err

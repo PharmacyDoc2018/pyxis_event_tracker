@@ -153,25 +153,87 @@ func (p *Process) matchControlEventActions() {
 
 		p.PyxisEventLogs[i].ControlEventLog.SortUnmatchedEvents()
 
-		currentDay := time.Time{}
-		currentDayEvents := []PyxisEvent{}
-		dayPatientMap := map[string][]PyxisEvent{}
-		itemIdDayPatientMap := map[string][]PyxisEvent{}
+		//-- Get variables needed from sorted unmatched events for MAR action query
+		firstDay := p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents[0].TxDateTime
+		lastDay := p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents[len(p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents)-1].TxDateTime
+
+		mrns := []string{}
+		mrnMap := map[string]struct{}{}
+
+		itemIDsMap := map[string]struct{}{}
+
+		medIDs := []string{}
+
+		for _, event := range p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents {
+			mrnMap[event.MRN] = struct{}{}
+			itemIDsMap[event.ItemID] = struct{}{}
+		}
+
+		for key := range mrnMap {
+			mrns = append(mrns, key)
+		}
+		mrnMap = nil
+
+		for key := range itemIDsMap {
+			medIDs = append(medIDs, p.erxItemIdLinks.GetMedIds(key)...)
+		}
+		itemIDsMap = nil
+
+		deptIDs := []string{}
+		for _, dept := range coveredDeptIDs {
+			deptIDs = append(deptIDs, dept.ID)
+		}
 
 		unmatchedEvents := p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents
 		p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents = []PyxisEvent{}
 
-		for len(unmatchedEvents) != 0 {
-			index := 0
-			currentDay = timeStartDay(unmatchedEvents[index].TxDateTime)
-			currentDayEvents = []PyxisEvent{}
+		params := database.GetMarAdminActionsByPatientsDaysMedIDsParams{
+			DateStart: firstDay,
+			DateEnd:   lastDay,
+			DeptIDs:   deptIDs,
+			Mrns:      mrns,
+			MedIDs:    medIDs,
+		}
 
+		MarActionResponses, err := getMarActions(p, params)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Unable retrieve MAR actions for %s Pyxis from %s to %s - control event matching skipped",
+				p.PyxisEventLogs[i].PyxisName,
+				firstDay.Format("2006-01-02"),
+				lastDay.Format("2006-01-02")))
+
+			continue
+		}
+
+		marActions := p.parseMarActions(MarActionResponses)
+
+		currentDay := time.Time{}
+		currentDayEvents := []PyxisEvent{}
+		currentDayActions := []MarAction{}
+		dayPatientMap := map[string][]PyxisEvent{}
+		itemIdDayPatientMap := map[string][]PyxisEvent{}
+
+		for len(unmatchedEvents) != 0 {
+			currentDay = timeStartDay(unmatchedEvents[0].TxDateTime)
+			currentDayEvents = []PyxisEvent{}
+			currentDayActions = []MarAction{}
+
+			//-- pop unmatchedEvents from currentDay into currentDayEvents
+			index := 0
 			for index < len(unmatchedEvents) &&
 				timeStartDay(unmatchedEvents[index].TxDateTime).Equal(currentDay) {
 				currentDayEvents = append(currentDayEvents, unmatchedEvents[index])
 				index++
 			}
 			unmatchedEvents = unmatchedEvents[index:]
+
+			index = 0
+			for index < len(marActions) &&
+				timeStartDay(marActions[index].SavedTime).Equal(currentDay) {
+				currentDayActions = append(currentDayActions, marActions[index])
+				index++
+			}
+			marActions = marActions[index:]
 
 			p.logger.LogInfo(fmt.Sprintf("Matching control events on %s. Found %d unmatched events",
 				currentDay.Format("2006-01-02"),
@@ -223,18 +285,6 @@ func (p *Process) matchControlEventActions() {
 
 						unmatchedEvents = append(unmatchedEvents, mrnDayItemIdEvents...)
 						continue
-					}
-
-					deptIDs := []string{}
-					for _, dept := range coveredDeptIDs {
-						deptIDs = append(deptIDs, dept.ID)
-					}
-
-					params := database.GetMarAdminActionsByPatientDayMedIDsParams{
-						Date:    currentDay,
-						DeptIDs: deptIDs,
-						Mrn:     mrn,
-						MedIDs:  medIDs,
 					}
 
 					MarActionResponses, err := getMarActions(p, params)

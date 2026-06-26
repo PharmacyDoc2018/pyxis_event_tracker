@@ -311,3 +311,127 @@ ORDER BY ma.SAVED_TIME;
 	return items, nil
 
 }
+
+type GetMarAdminActionsByPatientsDaysMedIDsParams struct {
+	DateStart time.Time
+	DateEnd   time.Time
+	DeptIDs   []string
+	Mrns      []string
+	MedIDs    []string
+}
+
+func (q *Queries) GetMarAdminActionsByPatientsDaysMedIDs(ctx context.Context, arg GetMarAdminActionsByPatientsDaysMedIDsParams) ([]MarActionResponse, error) {
+	deptIdPlaceholders := make([]string, len(arg.DeptIDs))
+	deptIdArgs := make([]any, len(arg.DeptIDs))
+
+	mrnPlaceholders := make([]string, len(arg.Mrns))
+	mrnArgs := make([]any, len(arg.Mrns))
+
+	medIdPlaceholders := make([]string, len(arg.MedIDs))
+	medIDArgs := make([]any, len(arg.MedIDs))
+
+	h, m, s := arg.DateStart.Clock()
+	if h != 0 || m != 0 || s != 0 {
+		return nil, fmt.Errorf("error. date must be set to midnight of the first selected day")
+	}
+
+	h, m, s = arg.DateEnd.Clock()
+	if h != 23 || m != 59 || s != 59 {
+		return nil, fmt.Errorf("error. date must be set to 11:59:59 of the last selected day")
+	}
+
+	allArgs := []any{
+		sql.Named("start", arg.DateStart),
+		sql.Named("end", arg.DateEnd),
+	}
+
+	for i, deptID := range arg.DeptIDs {
+		deptIdPlaceholders[i] = fmt.Sprintf("@d%d", i)
+		deptIdArgs[i] = sql.Named(fmt.Sprintf("d%d", i), deptID)
+	}
+	allArgs = append(allArgs, deptIdArgs...)
+
+	for i, mrn := range arg.Mrns {
+		mrnPlaceholders[i] = fmt.Sprintf("@m%d", i)
+		mrnArgs[i] = sql.Named(fmt.Sprintf("m%d", i), mrn)
+	}
+	allArgs = append(allArgs, mrnArgs...)
+
+	for i, medID := range arg.MedIDs {
+		medIdPlaceholders[i] = fmt.Sprintf("@p%d", i)
+		medIDArgs[i] = sql.Named(fmt.Sprintf("p%d", i), medID)
+	}
+	allArgs = append(allArgs, medIDArgs...)
+
+	query := fmt.Sprintf(`
+SELECT
+	ma.SAVED_TIME,
+	ma.ORDER_MED_ID,
+	mc.FilteredMARAction,
+	o.DISPLAY_NAME, 
+	o.MEDICATION_ID,
+	u.SYSTEM_LOGIN,
+	u.NAME,
+	o.CalcDoseUnitDescription,
+	o.CALC_MIN_DOSE,
+	pat.PAT_MRN_ID,
+	pat.PAT_NAME
+FROM dbo.fctMARActions ma
+INNER JOIN dbo.dimMARCharacteristics mc
+	ON ma.sk_dim_MARChar = mc.sk_dim_MARChar
+INNER JOIN dbo.fctORDER_MED o
+	ON ma.ORDER_MED_ID = o.ORDER_MED_ID
+INNER JOIN dbo.dimUsers u
+	ON ma.MAR_ActionUser = u.User_ID
+INNER JOIN dbo.dimPatient pat
+	ON pat.PAT_ID = o.PAT_ID
+WHERE mc.FilteredMARAction IN (
+	'Given',
+	'New Bag'
+)
+AND ma.SAVED_TIME >= @start
+AND ma.SAVED_TIME < @end
+AND ma.MAR_ADMIN_DEPT_ID IN (%s)
+AND pat.PAT_MRN_ID IN (%s) 
+AND o.MEDICATION_ID IN (%s)
+ORDER BY ma.SAVED_TIME;
+`, strings.Join(deptIdPlaceholders, ","),
+		strings.Join(mrnPlaceholders, ","),
+		strings.Join(medIdPlaceholders, ","))
+
+	rows, err := q.db.QueryContext(ctx, query, allArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []MarActionResponse
+	for rows.Next() {
+		var i MarActionResponse
+		if err := rows.Scan(
+			&i.SavedTime,
+			&i.OrderMedId,
+			&i.FilteredMarAction,
+			&i.DisplayName,
+			&i.MedicationId,
+			&i.SystemLogin,
+			&i.Name,
+			&i.CalcDoseUnitDescription,
+			&i.CalcMinDose,
+			&i.PatMRN,
+			&i.PatName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+
+}

@@ -69,6 +69,21 @@ func timeStartDay(t time.Time) time.Time {
 	return startDay
 }
 
+func timeEndDay(t time.Time) time.Time {
+	startDay := time.Date(
+		t.Year(),
+		t.Month(),
+		t.Day(),
+		23,
+		59,
+		59,
+		0,
+		t.Location(),
+	)
+
+	return startDay
+}
+
 func isSameDay(timeOne, timeTwo time.Time) bool {
 	return timeOne.Year() == timeTwo.Year() &&
 		timeOne.Month() == timeTwo.Month() &&
