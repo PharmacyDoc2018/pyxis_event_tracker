@@ -210,15 +210,19 @@ func (p *Process) matchControlEventActions() {
 		currentDay := time.Time{}
 		currentDayEvents := []PyxisEvent{}
 		currentDayActions := []MarAction{}
-		dayPatientMap := map[string][]PyxisEvent{}
-		itemIdDayPatientMap := map[string][]PyxisEvent{}
+
+		mrnDayEventMap := map[string][]PyxisEvent{}
+		mrnDayActionMap := map[string][]MarAction{}
+
+		itemIdMrnDayEventMap := map[string][]PyxisEvent{}
+		itemIdMrnDayActionMap := map[string][]MarAction{}
 
 		for len(unmatchedEvents) != 0 {
 			currentDay = timeStartDay(unmatchedEvents[0].TxDateTime)
 			currentDayEvents = []PyxisEvent{}
 			currentDayActions = []MarAction{}
 
-			//-- pop unmatchedEvents from currentDay into currentDayEvents
+			//-- pop unmatchedEvents from currentDay into currentDayEvents (I)
 			index := 0
 			for index < len(unmatchedEvents) &&
 				timeStartDay(unmatchedEvents[index].TxDateTime).Equal(currentDay) {
@@ -227,6 +231,7 @@ func (p *Process) matchControlEventActions() {
 			}
 			unmatchedEvents = unmatchedEvents[index:]
 
+			//-- pop unmatched MAR actions from currendDay into currentDayActions (I)
 			index = 0
 			for index < len(marActions) &&
 				timeStartDay(marActions[index].SavedTime).Equal(currentDay) {
@@ -235,41 +240,60 @@ func (p *Process) matchControlEventActions() {
 			}
 			marActions = marActions[index:]
 
-			p.logger.LogInfo(fmt.Sprintf("Matching control events on %s. Found %d unmatched events",
+			p.logger.LogInfo(fmt.Sprintf("Matching control events on %s. Found %d unmatched events and %d MAR actions",
 				currentDay.Format("2006-01-02"),
-				len(currentDayEvents)))
+				len(currentDayEvents),
+				len(currentDayActions)))
 
-			//-- From day events, create map[mrn][]PyxisEvents. Each key = mrn, val = slice of Pyxis events for that patient
-			dayPatientMap = map[string][]PyxisEvent{}
+			//-- From day events, create map[mrn][]PyxisEvents. Each key = mrn, val = slice of Pyxis events for that patient (II)
+			mrnDayEventMap = map[string][]PyxisEvent{}
 			for _, currentDayEvent := range currentDayEvents {
 				if currentDayEvent.MRN == "" {
 					continue
 				}
-				if _, okay := dayPatientMap[currentDayEvent.MRN]; !okay {
-					dayPatientMap[currentDayEvent.MRN] = []PyxisEvent{}
+				if _, okay := mrnDayEventMap[currentDayEvent.MRN]; !okay {
+					mrnDayEventMap[currentDayEvent.MRN] = []PyxisEvent{}
 				}
 
-				dayPatientMap[currentDayEvent.MRN] = append(dayPatientMap[currentDayEvent.MRN], currentDayEvent)
+				mrnDayEventMap[currentDayEvent.MRN] = append(mrnDayEventMap[currentDayEvent.MRN], currentDayEvent)
 			}
 
-			//-- From day-patient events, create map[itemID][]PyxisEvents. Each val = slice of Pyxis events for that day-pt-itemID
-			p.logger.LogInfo(fmt.Sprintf("%d patient(s) found with control events on %s", len(dayPatientMap), currentDay.Format("2006-01-02")))
-			for mrn, mrnDayEvents := range dayPatientMap {
+			//-- From day actions, create map[mrn][]MarAction. Each key = mrn, val = slice of MarActions for that patient (II)
+			mrnDayActionMap = map[string][]MarAction{}
+			for _, currentDayAction := range currentDayActions {
+				if currentDayAction.MRN == "" {
+					continue
+				}
+				if _, okay := mrnDayActionMap[currentDayAction.MRN]; !okay {
+					mrnDayActionMap[currentDayAction.MRN] = []MarAction{}
+				}
+
+				mrnDayActionMap[currentDayAction.MRN] = append(mrnDayActionMap[currentDayAction.MRN], currentDayAction)
+			}
+
+			p.logger.LogInfo(fmt.Sprintf("%d patient(s) found with control events and %d MAR actions on %s", len(mrnDayEventMap), len(mrnDayActionMap), currentDay.Format("2006-01-02")))
+
+			//-- Loop through each patient in the mrnDayEvent Map
+			for mrn, mrnDayEvents := range mrnDayEventMap {
 				p.logger.LogInfo(fmt.Sprintf("%d control events found for mrn %s on %s",
 					len(mrnDayEvents),
 					mrn,
 					currentDay.Format("2006-01-02")))
 
-				itemIdDayPatientMap = map[string][]PyxisEvent{}
+				//-- For each event in the mrn-day events, seperate them into a map[itemId][]itemID-mrn-day events
+				itemIdMrnDayEventMap = map[string][]PyxisEvent{}
 				for _, mrnDayEvent := range mrnDayEvents {
-					if _, okay := itemIdDayPatientMap[mrnDayEvent.ItemID]; !okay {
-						itemIdDayPatientMap[mrnDayEvent.ItemID] = []PyxisEvent{}
+					if _, okay := itemIdMrnDayEventMap[mrnDayEvent.ItemID]; !okay {
+						itemIdMrnDayEventMap[mrnDayEvent.ItemID] = []PyxisEvent{}
 					}
 
-					itemIdDayPatientMap[mrnDayEvent.ItemID] = append(itemIdDayPatientMap[mrnDayEvent.ItemID], mrnDayEvent)
+					itemIdMrnDayEventMap[mrnDayEvent.ItemID] = append(itemIdMrnDayEventMap[mrnDayEvent.ItemID], mrnDayEvent)
 				}
 
-				for itemID, mrnDayItemIdEvents := range itemIdDayPatientMap {
+				//-- For each event in the mrn-day events, seperate them into a map[itemId][]itemID-mrn-day events
+				//-- RESTART HERE -- Need to write the above logic
+
+				for itemID, mrnDayItemIdEvents := range itemIdMrnDayEventMap {
 					p.logger.LogInfo(fmt.Sprintf("%d control events found for itemID %s for mrn %s on %s",
 						len(mrnDayItemIdEvents),
 						itemID,
