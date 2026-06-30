@@ -75,6 +75,19 @@ func (c *ControlEventLog) SortUnmatchedEvents() {
 	})
 }
 
+func (c *ControlEventLog) ValidateTrails() {
+	for i := range c.Log {
+		IsValid := c.Log[i].Vaild
+		for _, event := range c.Log[i].EventTrails {
+			IsValid = event.Vaild
+			if !IsValid {
+				break
+			}
+		}
+		c.Log[i].Vaild = IsValid
+	}
+}
+
 func (c *ControlEventLog) Save(p *Process) error {
 	//-- Marshall and write control event log data
 	data, err := json.Marshal(&c)

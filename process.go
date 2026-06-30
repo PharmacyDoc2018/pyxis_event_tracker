@@ -444,6 +444,12 @@ func initProcess() *Process {
 		//-- Attempt to match events in ControlEventLog.UnmatchedEvents
 		p.matchControlEventActions()
 
+		//-- Validate control event trails
+		for i := range p.PyxisEventLogs {
+			p.logger.LogInfo(fmt.Sprintf("Validating control event trails for %s Pyxis", p.PyxisEventLogs[i].PyxisName))
+			p.PyxisEventLogs[i].ControlEventLog.ValidateTrails()
+		}
+
 	}
 
 	//-- unload Pyxis event logs from memory
