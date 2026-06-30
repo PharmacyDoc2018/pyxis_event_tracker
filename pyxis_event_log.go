@@ -248,8 +248,17 @@ func (p *PyxisEventLog) checkForNewControlEvents() *logResponder {
 	//-- Create uuid slice of control pyxis events
 	controlEvents := []PyxisEvent{}
 	for _, event := range p.Log {
-		if _, okay := controlClassCodes[event.MedClassCode]; okay {
-			controlEvents = append(controlEvents, event)
+		switch event.MedClassCode {
+		case "Remove":
+			fallthrough
+		case "Waste":
+			fallthrough
+		case "IntWaste":
+			fallthrough
+		case "Return to bin":
+			if _, okay := controlClassCodes[event.MedClassCode]; okay {
+				controlEvents = append(controlEvents, event)
+			}
 		}
 	}
 
