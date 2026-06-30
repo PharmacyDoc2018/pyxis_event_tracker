@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/PharmacyDoc2018/pyxis_event_tracker/cli"
+	"github.com/gocarina/gocsv"
 )
 
 func (p *Process) setupCommands() {
@@ -539,5 +542,138 @@ func (p *Process) setupCommands() {
 		}
 
 		return nil
+	})
+
+	//-------------------- Control Event Trail Commands ------------------------//
+	p.cliConfig.AddCommand("generate control trail", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("generate control trail command executed")
+
+		type ReportRowValue struct {
+			Key         string
+			Type        string
+			DateTime    string
+			UserID      string
+			UserName    string
+			DisplayName string
+			Amount      string
+			Units       string
+			MRN         string
+			WitPtName   string
+		}
+
+		type RowNames struct {
+			KeyName         string
+			TypeName        string
+			DateTimeName    string
+			UserIDName      string
+			UserNameName    string
+			DisplayNameName string
+			AmountName      string
+			UnitsName       string
+			MrnName         string
+			WitPtName       string
+		}
+
+		eventRowNames := RowNames{
+			KeyName:         "Item Transaction Key",
+			TypeName:        "Transaction Type",
+			DateTimeName:    "Tx Date Time",
+			UserIDName:      "User ID",
+			UserNameName:    "User Name",
+			DisplayNameName: "Display Name",
+			AmountName:      "Amount",
+			UnitsName:       "Units",
+			MrnName:         "MRN",
+			WitPtName:       "Witness",
+		}
+
+		actionRowNames := RowNames{
+			KeyName:         "Order Number",
+			TypeName:        "MAR Action",
+			DateTimeName:    "Saved Time",
+			UserIDName:      "User ID",
+			UserNameName:    "User Name",
+			DisplayNameName: "Display Name",
+			AmountName:      "Dose",
+			UnitsName:       "Units",
+			MrnName:         "MRN",
+			WitPtName:       "Patient Name",
+		}
+
+		pyxis := ""
+		for _, arg := range args {
+			switch arg.Name {
+			case "pyxis":
+				pyxis = arg.Val
+			}
+		}
+
+		if pyxis == "" {
+			p.logger.LogError("Command failed. Pyxis cannot be blank")
+			return fmt.Errorf("error. pyxis cannot be blank")
+		}
+
+		for _, pyxisEventLog := range p.PyxisEventLogs {
+			if pyxisEventLog.PyxisName == pyxis {
+				controlTrailSlices := pyxisEventLog.ControlEventLog.GenerateTrailSlices()
+
+				report := [][]string{}
+				index := 0
+
+				for _, controlTrailSlice := range controlTrailSlices {
+					for y, controlTrail := range controlTrailSlice {
+						batch := make([][]string, 10)
+						for x, event := range controlTrail.Trail {
+							switch event.Type {
+							case pyxisEvent:
+								batch[0][x*2] = eventRowNames.KeyName
+								batch[0][(x*2)+1] = event.PyxisEvent.ItemTransactionKey.String()
+								batch[1][x*2] = eventRowNames.TypeName
+								batch[1][(x*2)+1] = event.PyxisEvent.TransactionType
+								batch[2][x*2] = eventRowNames.DateTimeName
+								batch[2][(x*2)+1] = event.PyxisEvent.TxDateTime.Format("2006-01-02")
+								batch[3][x*2] = eventRowNames.UserIDName
+								batch[3][(x*2)+1] = event.PyxisEvent.UserID
+								batch[4][x*2] = eventRowNames.UserNameName
+								batch[4][(x*2)+1] = event.PyxisEvent.UserName
+								batch[5][x*2] = eventRowNames.DisplayNameName
+								batch[5][(x*2)+1] = event.PyxisEvent.MedDisplayName
+								batch[6][x*2] = eventRowNames.AmountName
+								batch[6][(x*2)+1] = strconv.FormatFloat(event.PyxisEvent.AmountReferenced, 'f', -1, 64)
+								batch[7][x*2] = eventRowNames.UnitsName
+								batch[7][(x*2)+1] = event.PyxisEvent.AmountReferencedUnits
+								batch[8][x*2] = eventRowNames.MrnName
+								batch[8][(x*2)+1] = event.PyxisEvent.MRN
+								batch[9][x*2] = eventRowNames.WitPtName
+								batch[9][(x*2)+1] = event.PyxisEvent.WitnessName
+
+							case marAction:
+								//
+							}
+						}
+					}
+				}
+
+				file, err := os.OpenFile(filepath.Join(p.pathToOut, pyxis+"_ControlEventTrails"+".csv"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+				if err != nil {
+					p.logger.LogError(fmt.Sprintf("Command failed: Error opening %s_ControlEventTrails.csv : %s", pyxis, err.Error()))
+					return err
+				}
+				defer file.Close()
+
+				err = gocsv.MarshalFile(controlTrailSlices, file)
+				if err != nil {
+					p.logger.LogError(fmt.Sprintf("Command failed: Error saving %s_ControlEventTrails.csv : %s", pyxis, err.Error()))
+					return err
+				}
+			}
+		}
+
+		p.logger.LogError(fmt.Sprintf("Command failed. %s pyxis not found", pyxis))
+		return fmt.Errorf("error. %s pyxis not fount", pyxis)
+
+	}, cli.CommandArg{
+		Name:     "pyxis",
+		Required: true,
 	})
 }

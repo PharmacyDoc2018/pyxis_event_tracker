@@ -459,3 +459,12 @@ func (c *ControlEventLog) MatchEvents(pyxisEvents []PyxisEvent, marActions []Mar
 	return unmatchedEvents
 
 }
+
+func (c *ControlEventLog) GenerateTrailSlices() [][]EventTrail {
+	slices := [][]EventTrail{}
+	for _, event := range c.Log {
+		slices = append(slices, event.EventTrails)
+	}
+
+	return slices
+}

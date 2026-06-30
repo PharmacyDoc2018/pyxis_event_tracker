@@ -23,6 +23,7 @@ type Process struct {
 	PyxisEventLogs     []*PyxisEventLog
 	pathToData         string
 	pathToSettings     string
+	pathToOut          string
 	logger             processLogger
 	testMarActionRes   []database.MarActionResponse
 	state              *processState
@@ -361,6 +362,7 @@ func initProcess() *Process {
 	processLogPath = os.Getenv("PROCESSLOGPATH")
 	p.pathToData = os.Getenv("DATAPATH")
 	p.pathToSettings = os.Getenv("SETTINGSPATH")
+	p.pathToOut = os.Getenv("OUTPATH")
 
 	processLogger := initProcessLogger(processLogPath)
 	p.logger = processLogger
@@ -524,6 +526,7 @@ const defaultEnv = `CONNSTRING=""
 PROCESSLOGPATH="./logs/process_log.txt"
 DATAPATH="./data/"
 SETTINGSPATH="./settings/"
+OUTPATH="./out/"
 `
 
 func (p *Process) initialLaunchSetup() error {
@@ -541,6 +544,7 @@ func (p *Process) initialLaunchSetup() error {
 	godotenv.Load(".env")
 	p.pathToData = os.Getenv("DATAPATH")
 	p.pathToSettings = os.Getenv("SETTINGSPATH")
+	p.pathToOut = os.Getenv("OUTPATH")
 
 	err = os.Mkdir("./logs/", 0755)
 	if err != nil {
@@ -553,6 +557,11 @@ func (p *Process) initialLaunchSetup() error {
 	}
 
 	err = os.Mkdir(p.pathToSettings, 0755)
+	if err != nil {
+		return err
+	}
+
+	err = os.Mkdir(p.pathToOut, 0755)
 	if err != nil {
 		return err
 	}
