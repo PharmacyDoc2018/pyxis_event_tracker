@@ -621,7 +621,7 @@ func (p *Process) setupCommands() {
 
 				for _, controlTrailSlice := range controlTrailSlices {
 					for _, controlTrail := range controlTrailSlice {
-						batch := make([][]string, 10)
+						batch := make([][]string, 11)
 						for i := range batch {
 							batch[i] = make([]string, len(controlTrail.Trail)*2)
 						}
@@ -633,7 +633,7 @@ func (p *Process) setupCommands() {
 								batch[1][x*2] = eventRowNames.TypeName
 								batch[1][(x*2)+1] = event.PyxisEvent.TransactionType
 								batch[2][x*2] = eventRowNames.DateTimeName
-								batch[2][(x*2)+1] = event.PyxisEvent.TxDateTime.Format("2006-01-02")
+								batch[2][(x*2)+1] = event.PyxisEvent.TxDateTime.Format("2006-01-02 1504")
 								batch[3][x*2] = eventRowNames.UserIDName
 								batch[3][(x*2)+1] = event.PyxisEvent.UserID
 								batch[4][x*2] = eventRowNames.UserNameName
@@ -655,7 +655,7 @@ func (p *Process) setupCommands() {
 								batch[1][x*2] = actionRowNames.TypeName
 								batch[1][(x*2)+1] = event.MarAction.MarAction
 								batch[2][x*2] = actionRowNames.DateTimeName
-								batch[2][(x*2)+1] = event.MarAction.SavedTime.Format("2006-01-02")
+								batch[2][(x*2)+1] = event.MarAction.SavedTime.Format("2006-01-02 1504")
 								batch[3][x*2] = actionRowNames.UserIDName
 								batch[3][(x*2)+1] = event.MarAction.UserID
 								batch[4][x*2] = actionRowNames.UserNameName
