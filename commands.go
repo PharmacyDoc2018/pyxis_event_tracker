@@ -582,7 +582,6 @@ func (p *Process) setupCommands() {
 			UserNameName:    "User Name",
 			DisplayNameName: "Display Name",
 			AmountName:      "Amount",
-			UnitsName:       "Units",
 			MrnName:         "MRN",
 			WitPtName:       "Witness",
 		}
@@ -595,7 +594,6 @@ func (p *Process) setupCommands() {
 			UserNameName:    "User Name",
 			DisplayNameName: "Display Name",
 			AmountName:      "Dose",
-			UnitsName:       "Units",
 			MrnName:         "MRN",
 			WitPtName:       "Patient Name",
 		}
@@ -621,7 +619,7 @@ func (p *Process) setupCommands() {
 
 				for _, controlTrailSlice := range controlTrailSlices {
 					for _, controlTrail := range controlTrailSlice {
-						batch := make([][]string, 11)
+						batch := make([][]string, 10)
 						for i := range batch {
 							batch[i] = make([]string, len(controlTrail.Trail)*2)
 						}
@@ -641,13 +639,13 @@ func (p *Process) setupCommands() {
 								batch[5][x*2] = eventRowNames.DisplayNameName
 								batch[5][(x*2)+1] = event.PyxisEvent.MedDisplayName
 								batch[6][x*2] = eventRowNames.AmountName
-								batch[6][(x*2)+1] = strconv.FormatFloat(event.PyxisEvent.AmountReferenced, 'f', -1, 64)
-								batch[7][x*2] = eventRowNames.UnitsName
-								batch[7][(x*2)+1] = event.PyxisEvent.AmountReferencedUnits
-								batch[8][x*2] = eventRowNames.MrnName
-								batch[8][(x*2)+1] = event.PyxisEvent.MRN
-								batch[9][x*2] = eventRowNames.WitPtName
-								batch[9][(x*2)+1] = event.PyxisEvent.WitnessName
+								batch[6][(x*2)+1] = fmt.Sprintf("%s %s",
+									strconv.FormatFloat(event.PyxisEvent.AmountReferenced, 'f', -1, 64),
+									event.PyxisEvent.AmountReferencedUnits)
+								batch[7][x*2] = eventRowNames.MrnName
+								batch[7][(x*2)+1] = event.PyxisEvent.MRN
+								batch[8][x*2] = eventRowNames.WitPtName
+								batch[8][(x*2)+1] = event.PyxisEvent.WitnessName
 
 							case marAction:
 								batch[0][x*2] = actionRowNames.KeyName
@@ -663,13 +661,13 @@ func (p *Process) setupCommands() {
 								batch[5][x*2] = actionRowNames.DisplayNameName
 								batch[5][(x*2)+1] = event.MarAction.DisplayName
 								batch[6][x*2] = actionRowNames.AmountName
-								batch[6][(x*2)+1] = strconv.FormatFloat(event.MarAction.CalcMinDose, 'f', -1, 64)
-								batch[7][x*2] = actionRowNames.UnitsName
-								batch[7][(x*2)+1] = event.MarAction.CalcDoseUnitDescription
-								batch[8][x*2] = actionRowNames.MrnName
-								batch[8][(x*2)+1] = event.MarAction.MRN
-								batch[9][x*2] = actionRowNames.WitPtName
-								batch[9][(x*2)+1] = event.MarAction.PtName
+								batch[6][(x*2)+1] = fmt.Sprintf("%s %s",
+									strconv.FormatFloat(event.MarAction.CalcMinDose, 'f', -1, 64),
+									event.MarAction.CalcDoseUnitDescription)
+								batch[7][x*2] = actionRowNames.MrnName
+								batch[7][(x*2)+1] = event.MarAction.MRN
+								batch[8][x*2] = actionRowNames.WitPtName
+								batch[8][(x*2)+1] = event.MarAction.PtName
 							}
 						}
 						report = append(report, batch...)
