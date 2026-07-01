@@ -1,13 +1,13 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 
 	"github.com/PharmacyDoc2018/pyxis_event_tracker/cli"
-	"github.com/gocarina/gocsv"
 )
 
 func (p *Process) setupCommands() {
@@ -618,11 +618,13 @@ func (p *Process) setupCommands() {
 				controlTrailSlices := pyxisEventLog.ControlEventLog.GenerateTrailSlices()
 
 				report := [][]string{}
-				index := 0
 
 				for _, controlTrailSlice := range controlTrailSlices {
-					for y, controlTrail := range controlTrailSlice {
+					for _, controlTrail := range controlTrailSlice {
 						batch := make([][]string, 10)
+						for i := range batch {
+							batch[i] = make([]string, len(controlTrail.Trail)*2)
+						}
 						for x, event := range controlTrail.Trail {
 							switch event.Type {
 							case pyxisEvent:
@@ -648,9 +650,29 @@ func (p *Process) setupCommands() {
 								batch[9][(x*2)+1] = event.PyxisEvent.WitnessName
 
 							case marAction:
-								//
+								batch[0][x*2] = actionRowNames.KeyName
+								batch[0][(x*2)+1] = event.MarAction.OrderNumber
+								batch[1][x*2] = actionRowNames.TypeName
+								batch[1][(x*2)+1] = event.MarAction.MarAction
+								batch[2][x*2] = actionRowNames.DateTimeName
+								batch[2][(x*2)+1] = event.MarAction.SavedTime.Format("2006-01-02")
+								batch[3][x*2] = actionRowNames.UserIDName
+								batch[3][(x*2)+1] = event.MarAction.UserID
+								batch[4][x*2] = actionRowNames.UserNameName
+								batch[4][(x*2)+1] = event.MarAction.UserName
+								batch[5][x*2] = actionRowNames.DisplayNameName
+								batch[5][(x*2)+1] = event.MarAction.DisplayName
+								batch[6][x*2] = actionRowNames.AmountName
+								batch[6][(x*2)+1] = strconv.FormatFloat(event.MarAction.CalcMinDose, 'f', -1, 64)
+								batch[7][x*2] = actionRowNames.UnitsName
+								batch[7][(x*2)+1] = event.MarAction.CalcDoseUnitDescription
+								batch[8][x*2] = actionRowNames.MrnName
+								batch[8][(x*2)+1] = event.MarAction.MRN
+								batch[9][x*2] = actionRowNames.WitPtName
+								batch[9][(x*2)+1] = event.MarAction.PtName
 							}
 						}
+						report = append(report, batch...)
 					}
 				}
 
@@ -661,16 +683,19 @@ func (p *Process) setupCommands() {
 				}
 				defer file.Close()
 
-				err = gocsv.MarshalFile(controlTrailSlices, file)
+				writer := csv.NewWriter(file)
+				err = writer.WriteAll(report)
 				if err != nil {
-					p.logger.LogError(fmt.Sprintf("Command failed: Error saving %s_ControlEventTrails.csv : %s", pyxis, err.Error()))
-					return err
+					p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
+					fmt.Println(err.Error())
 				}
+
+				return nil
 			}
 		}
 
 		p.logger.LogError(fmt.Sprintf("Command failed. %s pyxis not found", pyxis))
-		return fmt.Errorf("error. %s pyxis not fount", pyxis)
+		return fmt.Errorf("error. %s pyxis not found", pyxis)
 
 	}, cli.CommandArg{
 		Name:     "pyxis",
