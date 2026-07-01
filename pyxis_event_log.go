@@ -245,7 +245,7 @@ func (p *PyxisEventLog) checkForNewControlEvents() *logResponder {
 		"5": struct{}{},
 	}
 
-	//-- Create uuid slice of control pyxis events
+	//-- Create slice of control pyxis events
 	controlEvents := []PyxisEvent{}
 	for _, event := range p.Log {
 		switch event.MedClassCode {
@@ -277,7 +277,7 @@ func (p *PyxisEventLog) checkForNewControlEvents() *logResponder {
 		logger.AddInfo(fmt.Sprintf("%d new control events found. Adding to unmatched control log", len(unmatchedEvents)))
 	}
 
-	p.ControlEventLog.AddUnmatchedEvents(unmatchedEvents)
+	p.ControlEventLog.UnmatchedEvents = unmatchedEvents
 	return &logger
 
 }
