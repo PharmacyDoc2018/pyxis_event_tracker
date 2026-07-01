@@ -248,7 +248,7 @@ func (p *PyxisEventLog) checkForNewControlEvents() *logResponder {
 	//-- Create slice of control pyxis events
 	controlEvents := []PyxisEvent{}
 	for _, event := range p.Log {
-		switch event.MedClassCode {
+		switch event.TransactionType {
 		case "Remove":
 			fallthrough
 		case "Waste":
