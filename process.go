@@ -155,7 +155,7 @@ func (p *Process) matchControlEventActions() {
 		p.PyxisEventLogs[i].ControlEventLog.SortUnmatchedEvents()
 
 		//-- Get variables needed from sorted unmatched events for MAR action query
-		firstDay := timeStartDay(p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents[1].TxDateTime)
+		firstDay := timeStartDay(p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents[0].TxDateTime)
 		lastDay := timeEndDay(p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents[len(p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents)-1].TxDateTime)
 
 		mrns := []string{}
