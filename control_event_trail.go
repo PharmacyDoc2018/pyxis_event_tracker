@@ -18,6 +18,19 @@ const (
 	marAction
 )
 
+type CorrectionEvent struct {
+	BeSafe      string
+	WriteUpFile string
+	UserID      string
+	UserName    string
+	ItemId      string
+	DisplayName string
+	Amount      float64
+	Units       string
+	MRN         string
+	PtName      string
+}
+
 type EventTrailItem struct {
 	Type       EventType
 	PyxisEvent PyxisEvent
@@ -26,7 +39,7 @@ type EventTrailItem struct {
 
 type EventTrail struct {
 	Trail []EventTrailItem
-	Vaild bool
+	Valid bool
 }
 
 type ControlEventTrail struct {
@@ -79,7 +92,7 @@ func (c *ControlEventLog) ValidateTrails() {
 	for i := range c.Log {
 		IsValid := c.Log[i].Vaild
 		for _, event := range c.Log[i].EventTrails {
-			IsValid = event.Vaild
+			IsValid = event.Valid
 			if !IsValid {
 				break
 			}
@@ -388,7 +401,7 @@ func (c *ControlEventLog) MatchEvents(pyxisEvents []PyxisEvent, marActions []Mar
 
 				controlEventTrail.EventTrails = append(controlEventTrail.EventTrails, EventTrail{
 					Trail: newTrail,
-					Vaild: true,
+					Valid: true,
 				})
 				break
 			}
@@ -427,7 +440,7 @@ func (c *ControlEventLog) MatchEvents(pyxisEvents []PyxisEvent, marActions []Mar
 
 				controlEventTrail.EventTrails = append(controlEventTrail.EventTrails, EventTrail{
 					Trail: newTrail,
-					Vaild: true,
+					Valid: true,
 				})
 
 				if len(tempTrail) == len(allEvents) && len(addBackTrail) == 0 {
@@ -467,4 +480,106 @@ func (c *ControlEventLog) GenerateTrailSlices() [][]EventTrail {
 	}
 
 	return slices
+}
+
+func (c *ControlEventLog) LinkEventActions(mrn, itemID string, date time.Time, items ...EventTrailItem) *logError {
+	if len(items) == 0 {
+		return &logError{
+			errMessage: "error. no event actions given to link",
+			logMessage: "Error. No event actions given to link",
+		}
+
+	}
+
+	h, m, s := date.Clock()
+	if h != 0 || m != 0 || s != 0 {
+		return &logError{
+			errMessage: "error. time must be set to midnight of the chosen day",
+			logMessage: "Error. Time must be set to midnight of the chosen day",
+		}
+	}
+
+	tempUnmatchedEvents := []PyxisEvent{}
+	NetAmount := 0.0
+
+	for _, item := range items {
+		switch item.Type {
+		case pyxisEvent:
+			//-- Check to make sure event is listed in the UnmatchedEvents
+			found := false
+			for i, unmatchedEvent := range c.UnmatchedEvents {
+				if item.PyxisEvent.ItemTransactionKey == unmatchedEvent.ItemTransactionKey {
+					found = true
+					tempUnmatchedEvents = append(tempUnmatchedEvents, item.PyxisEvent)
+					c.UnmatchedEvents = append(c.UnmatchedEvents[:i], c.UnmatchedEvents[i+1:]...)
+					break
+				}
+			}
+			if !found {
+				c.UnmatchedEvents = append(c.UnmatchedEvents, tempUnmatchedEvents...)
+				c.SortUnmatchedEvents()
+				return &logError{
+					errMessage: (fmt.Sprintf("error. pyxis event %s not found in unmatched events", item.PyxisEvent.ItemTransactionKey.String())),
+					logMessage: (fmt.Sprintf("Error. Pyxis event %s not found in unmatched events", item.PyxisEvent.ItemTransactionKey.String())),
+				}
+			}
+
+			//-- Add to net amount for zero check
+			switch item.PyxisEvent.TransactionType {
+			case "Remove":
+				addFloat(NetAmount, item.PyxisEvent.AmountReferenced)
+
+			case "Waste", "IntWaste":
+				subtractFloat(NetAmount, item.PyxisEvent.AmountReferenced)
+			}
+
+		case marAction:
+			subtractFloat(NetAmount, item.MarAction.CalcMinDose)
+		}
+	}
+
+	if NetAmount != 0.0 {
+		return &logError{
+			errMessage: "error. net amount used must be zero",
+			logMessage: "Error. Net amount used must be zero",
+		}
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		dateOne := time.Time{}
+		switch items[i].Type {
+		case pyxisEvent:
+			dateOne = items[i].PyxisEvent.TxDateTime
+
+		case marAction:
+			dateOne = items[i].MarAction.SavedTime
+		}
+
+		dateTwo := time.Time{}
+		switch items[j].Type {
+		case pyxisEvent:
+			dateOne = items[j].PyxisEvent.TxDateTime
+
+		case marAction:
+			dateOne = items[j].MarAction.SavedTime
+		}
+
+		return dateOne.Before(dateTwo)
+	})
+
+	eventTrail := EventTrail{
+		Trail: items,
+		Valid: true,
+	}
+
+	found := false
+	for i, controlEventTrail := range c.Log {
+		if date.Equal(controlEventTrail.Date) && mrn == controlEventTrail.MRN {
+			found = true
+			c.Log[i].EventTrails = append(c.Log[i].EventTrails, eventTrail)
+			sort.Slice(c.Log[i].EventTrails, func(i, j int) bool {
+				//
+			})
+		}
+	}
 }
