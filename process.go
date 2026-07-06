@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/PharmacyDoc2018/pyxis_event_tracker/cache"
@@ -195,6 +196,12 @@ func (p *Process) matchControlEventActions() {
 			Mrns:      mrns,
 			MedIDs:    medIDs,
 		}
+
+		p.logger.LogInfo(fmt.Sprintf("Getting MAR actions from %s to %s for mrns %s and medIDs %s",
+			firstDay.Format("2006-01-02"),
+			lastDay.Format("2006-01-02"),
+			strings.Join(mrns, ", "),
+			strings.Join(medIDs, ", ")))
 
 		MarActionResponses, err := getMarActions(p, params)
 		if err != nil {
