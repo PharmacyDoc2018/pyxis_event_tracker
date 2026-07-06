@@ -577,9 +577,49 @@ func (c *ControlEventLog) LinkEventActions(mrn, itemID string, date time.Time, i
 		if date.Equal(controlEventTrail.Date) && mrn == controlEventTrail.MRN {
 			found = true
 			c.Log[i].EventTrails = append(c.Log[i].EventTrails, eventTrail)
-			sort.Slice(c.Log[i].EventTrails, func(i, j int) bool {
-				//
+			sort.Slice(c.Log[i].EventTrails, func(a, b int) bool {
+				dateOne := time.Time{}
+				switch c.Log[i].EventTrails[a].Trail[0].Type {
+				case pyxisEvent:
+					dateOne = c.Log[i].EventTrails[a].Trail[0].PyxisEvent.TxDateTime
+
+				case marAction:
+					dateOne = c.Log[i].EventTrails[a].Trail[0].MarAction.SavedTime
+				}
+
+				dateTwo := time.Time{}
+				switch c.Log[i].EventTrails[b].Trail[0].Type {
+				case pyxisEvent:
+					dateTwo = c.Log[i].EventTrails[b].Trail[0].PyxisEvent.TxDateTime
+
+				case marAction:
+					dateTwo = c.Log[i].EventTrails[b].Trail[0].MarAction.SavedTime
+				}
+
+				return dateOne.Before(dateTwo)
+			})
+			break
+		}
+
+		if !found {
+			c.Log = append(c.Log, ControlEventTrail{
+				MRN:    mrn,
+				ItemID: itemID,
+				Date:   date,
+				EventTrails: []EventTrail{
+					{
+						Trail: items,
+						Valid: true,
+					},
+				},
+				Vaild: true,
+			})
+
+			sort.Slice(c.Log, func(i, j int) bool {
+				return c.Log[i].Date.Before(c.Log[j].Date)
 			})
 		}
 	}
+
+	return nil
 }
