@@ -316,16 +316,6 @@ func (p *Process) matchControlEventActions() {
 						mrn,
 						currentDay.Format("2006-01-02")))
 
-					if len(itemIdMrnDayActionMap[itemID]) == 0 {
-						p.logger.LogError(fmt.Sprintf("Error. No medIDs/ERXs associated with itemID %s. Skipping control event matching for mrn %s on %s for this itemID.",
-							itemID,
-							mrn,
-							currentDay.Format("2006-01-02")))
-
-						unmatchedEvents = append(unmatchedEvents, itemIdMrnDayEvents...)
-						continue
-					}
-
 					p.logger.LogInfo(fmt.Sprintf("Matching control events for mrn %s itemID %s on %s",
 						mrn,
 						itemID,
