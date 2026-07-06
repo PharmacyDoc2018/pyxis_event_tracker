@@ -198,8 +198,8 @@ func (p *Process) matchControlEventActions() {
 		}
 
 		p.logger.LogInfo(fmt.Sprintf("Getting MAR actions from %s to %s for mrns %s and medIDs %s",
-			firstDay.Format("2006-01-02"),
-			lastDay.Format("2006-01-02"),
+			firstDay.Format("2006-01-02 1504"),
+			lastDay.Format("2006-01-02 1504"),
 			strings.Join(mrns, ", "),
 			strings.Join(medIDs, ", ")))
 

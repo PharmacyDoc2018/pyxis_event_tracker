@@ -337,7 +337,7 @@ func (q *Queries) GetMarAdminActionsByPatientsDaysMedIDs(ctx context.Context, ar
 
 	h, m, s = arg.DateEnd.Clock()
 	if h != 23 || m != 59 || s != 59 {
-		return nil, fmt.Errorf("error. date must be set to 11:59:59 of the last selected day")
+		return nil, fmt.Errorf("error. date must be set to 23:59:59 of the last selected day")
 	}
 
 	allArgs := []any{
