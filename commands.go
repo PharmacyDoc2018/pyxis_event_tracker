@@ -699,4 +699,56 @@ func (p *Process) setupCommands() {
 		Name:     "pyxis",
 		Required: true,
 	})
+
+	p.cliConfig.AddCommand("list unmatched events", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("list unmatched events command executed")
+
+		pyxis := ""
+
+		for _, arg := range args {
+			switch arg.Name {
+			case "pyxis":
+				pyxis = arg.Val
+			}
+		}
+
+		if pyxis == "" {
+			p.logger.LogError("Command failed. Pyxis cannot be blank")
+			return fmt.Errorf("error. pyxis cannot be blank")
+		}
+
+		index := 0
+		found := false
+		for i, p := range p.PyxisEventLogs {
+			if p.PyxisName == pyxis {
+				index = i
+				found = true
+				break
+			}
+		}
+		if !found {
+			p.logger.LogError(fmt.Sprintf("Command failed. %s Pyxis not found", pyxis))
+			return fmt.Errorf("error. %s pyxis not found", pyxis)
+		}
+
+		for _, unmatchedEvent := range p.PyxisEventLogs[index].ControlEventLog.UnmatchedEvents {
+			fmt.Printf("Key: %s\nType: %s\nDateTime: %s\nUserID: %s\nUserName: %s\nDisplayName: %s\nAmount: %s\nMRN: %s\nWitness: %s\n",
+				unmatchedEvent.ItemTransactionKey.String(),
+				unmatchedEvent.TransactionType,
+				unmatchedEvent.TxDateTime.Format("2006-01-02"),
+				unmatchedEvent.UserID,
+				unmatchedEvent.UserName,
+				unmatchedEvent.MedDisplayName,
+				strconv.FormatFloat(unmatchedEvent.AmountReferenced, 'f', -1, 64)+" "+unmatchedEvent.AmountReferencedUnits,
+				unmatchedEvent.MRN,
+				unmatchedEvent.WitnessName)
+			fmt.Println()
+		}
+
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "pyxis",
+		Required: true,
+	})
 }
