@@ -468,7 +468,6 @@ func (c *ControlEventLog) MatchEvents(pyxisEvents []PyxisEvent, marActions []Mar
 			unmatchedEvents = append(unmatchedEvents, event.PyxisEvent)
 		}
 	}
-	c.UnmatchedEvents = append(c.UnmatchedEvents, unmatchedEvents...)
 	return unmatchedEvents
 
 }
