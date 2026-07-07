@@ -215,123 +215,66 @@ func (p *Process) matchControlEventActions() {
 
 		marActions := p.parseMarActions(MarActionResponses)
 
-		currentDay := time.Time{}
-		currentDayEvents := []PyxisEvent{}
-		currentDayActions := []MarAction{}
+		eventMap := map[time.Time]map[string]map[string][]PyxisEvent{}
+		for _, unmatchedEvent := range unmatchedEvents {
+			startDayTime := timeStartDay(unmatchedEvent.TxDateTime)
+			mrn := unmatchedEvent.MRN
+			itemID := unmatchedEvent.ItemID
 
-		mrnDayEventMap := map[string][]PyxisEvent{}
-		mrnDayActionMap := map[string][]MarAction{}
-
-		itemIdMrnDayEventMap := map[string][]PyxisEvent{}
-		itemIdMrnDayActionMap := map[string][]MarAction{}
-
-		for len(unmatchedEvents) != 0 {
-			currentDay = timeStartDay(unmatchedEvents[0].TxDateTime)
-			currentDayEvents = []PyxisEvent{}
-			currentDayActions = []MarAction{}
-
-			//-- pop unmatchedEvents from currentDay into currentDayEvents (I)
-			index := 0
-			for index < len(unmatchedEvents) &&
-				timeStartDay(unmatchedEvents[index].TxDateTime).Equal(currentDay) {
-				currentDayEvents = append(currentDayEvents, unmatchedEvents[index])
-				index++
-			}
-			unmatchedEvents = unmatchedEvents[index:]
-
-			//-- pop unmatched MAR actions from currendDay into currentDayActions (I)
-			index = 0
-			for index < len(marActions) &&
-				timeStartDay(marActions[index].SavedTime).Equal(currentDay) {
-				currentDayActions = append(currentDayActions, marActions[index])
-				index++
-			}
-			marActions = marActions[index:]
-
-			p.logger.LogInfo(fmt.Sprintf("Matching control events on %s. Found %d unmatched events and %d MAR actions",
-				currentDay.Format("2006-01-02"),
-				len(currentDayEvents),
-				len(currentDayActions)))
-
-			//-- From day events, create map[mrn][]PyxisEvents. Each key = mrn, val = slice of Pyxis events for that patient (II)
-			mrnDayEventMap = map[string][]PyxisEvent{}
-			for _, currentDayEvent := range currentDayEvents {
-				if currentDayEvent.MRN == "" {
-					continue
-				}
-				if _, okay := mrnDayEventMap[currentDayEvent.MRN]; !okay {
-					mrnDayEventMap[currentDayEvent.MRN] = []PyxisEvent{}
-				}
-
-				mrnDayEventMap[currentDayEvent.MRN] = append(mrnDayEventMap[currentDayEvent.MRN], currentDayEvent)
+			if _, okay := eventMap[startDayTime]; !okay {
+				eventMap[startDayTime] = map[string]map[string][]PyxisEvent{}
 			}
 
-			//-- From day actions, create map[mrn][]MarAction. Each key = mrn, val = slice of MarActions for that patient (II)
-			mrnDayActionMap = map[string][]MarAction{}
-			for _, currentDayAction := range currentDayActions {
-				if currentDayAction.MRN == "" {
-					continue
-				}
-				if _, okay := mrnDayActionMap[currentDayAction.MRN]; !okay {
-					mrnDayActionMap[currentDayAction.MRN] = []MarAction{}
-				}
-
-				mrnDayActionMap[currentDayAction.MRN] = append(mrnDayActionMap[currentDayAction.MRN], currentDayAction)
+			if _, okay := eventMap[startDayTime][mrn]; !okay {
+				eventMap[startDayTime][mrn] = map[string][]PyxisEvent{}
 			}
 
-			p.logger.LogInfo(fmt.Sprintf("%d patient(s) found with control events and %d MAR actions on %s", len(mrnDayEventMap), len(mrnDayActionMap), currentDay.Format("2006-01-02")))
-
-			//-- For each action in the mrn-day actions, seperate them into a map[itemId][]itemID-mrn-day actions
-			//-- MAR actions have medIDs so itemID has to be retrieved from ERxItemIdLinks.GetItemId()
-			itemIdMrnDayActionMap = map[string][]MarAction{}
-			for _, mrnDayActions := range mrnDayActionMap {
-				for _, mrnDayAction := range mrnDayActions {
-					p.logger.LogInfo(fmt.Sprintf("Looking up itemID for medID %s", mrnDayAction.MedicationID))
-					itemId, logErr := p.erxItemIdLinks.GetItemId(mrnDayAction.MedicationID)
-					if logErr != nil {
-						p.logger.LogError(logErr.logMessage)
-						fmt.Println(logErr.errMessage)
-					} else {
-						p.logger.LogInfo(fmt.Sprintf("ItemID %s found for medID %s", itemId, mrnDayAction.MedicationID))
-						if _, okay := itemIdMrnDayActionMap[itemId]; !okay {
-							itemIdMrnDayActionMap[itemId] = []MarAction{}
-						}
-
-						itemIdMrnDayActionMap[itemId] = append(itemIdMrnDayActionMap[itemId], mrnDayAction)
-					}
-				}
+			if _, okay := eventMap[startDayTime][mrn][itemID]; !okay {
+				eventMap[startDayTime][mrn][itemID] = []PyxisEvent{}
 			}
 
-			//-- Loop through each patient in the mrnDayEvent Map
-			for mrn, mrnDayEvents := range mrnDayEventMap {
-				p.logger.LogInfo(fmt.Sprintf("%d control events found for mrn %s on %s",
-					len(mrnDayEvents),
-					mrn,
-					currentDay.Format("2006-01-02")))
+			eventMap[startDayTime][mrn][itemID] = append(eventMap[startDayTime][mrn][itemID], unmatchedEvent)
+		}
 
-				//-- For each event in the mrn-day events, seperate them into a map[itemId][]itemID-mrn-day events
-				itemIdMrnDayEventMap = map[string][]PyxisEvent{}
-				for _, mrnDayEvent := range mrnDayEvents {
-					if _, okay := itemIdMrnDayEventMap[mrnDayEvent.ItemID]; !okay {
-						itemIdMrnDayEventMap[mrnDayEvent.ItemID] = []PyxisEvent{}
-					}
+		actionMap := map[time.Time]map[string]map[string][]MarAction{}
+		for _, marAction := range marActions {
+			startDayTime := timeStartDay(marAction.SavedTime)
+			mrn := marAction.MRN
+			itemID, logErr := p.erxItemIdLinks.GetItemId(marAction.MedicationID)
+			if logErr != nil {
+				p.logger.LogError(fmt.Sprintf("Error. no itemID linked to medID %s. No MAR actions will be matched for mrn %s on %s for that medID",
+					marAction.MedicationID,
+					marAction.MRN,
+					startDayTime.Format("2006-01-02")))
+				continue
+			}
 
-					itemIdMrnDayEventMap[mrnDayEvent.ItemID] = append(itemIdMrnDayEventMap[mrnDayEvent.ItemID], mrnDayEvent)
-				}
+			if _, okay := actionMap[startDayTime]; !okay {
+				actionMap[startDayTime] = map[string]map[string][]MarAction{}
+			}
 
-				for itemID, itemIdMrnDayEvents := range itemIdMrnDayEventMap {
-					p.logger.LogInfo(fmt.Sprintf("%d control events and %d MAR actions found for itemID %s for mrn %s on %s",
-						len(itemIdMrnDayEvents),
-						len(itemIdMrnDayActionMap[itemID]),
-						itemID,
+			if _, okay := actionMap[startDayTime][mrn]; !okay {
+				actionMap[startDayTime][mrn] = map[string][]MarAction{}
+			}
+
+			if _, okay := actionMap[startDayTime][mrn][itemID]; !okay {
+				actionMap[startDayTime][mrn][itemID] = []MarAction{}
+			}
+
+			actionMap[startDayTime][mrn][itemID] = append(actionMap[startDayTime][mrn][itemID], marAction)
+		}
+
+		for startDayTime := range eventMap {
+			for mrn := range eventMap[startDayTime] {
+				for itemId := range eventMap[startDayTime][mrn] {
+					p.logger.LogInfo(fmt.Sprintf("Matching %d Pyxis events and %d MAR actions for mrn %s on %s with itemID %s",
+						len(eventMap[startDayTime][mrn][itemId]),
+						len(actionMap[startDayTime][mrn][itemId]),
 						mrn,
-						currentDay.Format("2006-01-02")))
+						startDayTime.Format("2006-01-02"),
+						itemId))
 
-					p.logger.LogInfo(fmt.Sprintf("Matching control events for mrn %s itemID %s on %s",
-						mrn,
-						itemID,
-						currentDay.Format("2006-01-02")))
-					unmatchedEvents := p.PyxisEventLogs[i].ControlEventLog.MatchEvents(itemIdMrnDayEvents, itemIdMrnDayActionMap[itemID], currentDay, mrn, itemID)
+					unmatchedEvents := p.PyxisEventLogs[i].ControlEventLog.MatchEvents(eventMap[startDayTime][mrn][itemId], actionMap[startDayTime][mrn][itemId], startDayTime, mrn, itemId)
 					if len(unmatchedEvents) > 0 {
 						p.logger.LogInfo(fmt.Sprintf("Matching complete with %d unmatched events", len(unmatchedEvents)))
 						p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents = append(p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents, unmatchedEvents...)
