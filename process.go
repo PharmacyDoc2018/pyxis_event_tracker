@@ -302,11 +302,13 @@ func (p *Process) matchControlEventActions() {
 				//-- MAR actions have medIDs so itemID has to be retrieved from ERxItemIdLinks.GetItemId()
 				itemIdMrnDayActionMap = map[string][]MarAction{}
 				for _, mrnDayAction := range mrnDayActionMap[mrn] {
+					p.logger.LogInfo(fmt.Sprintf("Looking up itemID for medID %s", mrnDayAction.MedicationID))
 					itemId, logErr := p.erxItemIdLinks.GetItemId(mrnDayAction.MedicationID)
 					if logErr != nil {
 						p.logger.LogError(logErr.logMessage)
 						fmt.Println(logErr.errMessage)
 					} else {
+						p.logger.LogInfo(fmt.Sprintf("ItemID %s found for medID %s", itemId, mrnDayAction.MedicationID))
 						if _, okay := itemIdMrnDayActionMap[itemId]; !okay {
 							itemIdMrnDayActionMap[itemId] = []MarAction{}
 						}
