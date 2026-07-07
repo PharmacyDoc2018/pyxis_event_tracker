@@ -281,6 +281,27 @@ func (p *Process) matchControlEventActions() {
 
 			p.logger.LogInfo(fmt.Sprintf("%d patient(s) found with control events and %d MAR actions on %s", len(mrnDayEventMap), len(mrnDayActionMap), currentDay.Format("2006-01-02")))
 
+			//-- For each action in the mrn-day actions, seperate them into a map[itemId][]itemID-mrn-day actions
+			//-- MAR actions have medIDs so itemID has to be retrieved from ERxItemIdLinks.GetItemId()
+			itemIdMrnDayActionMap = map[string][]MarAction{}
+			for _, mrnDayActions := range mrnDayActionMap {
+				for _, mrnDayAction := range mrnDayActions {
+					p.logger.LogInfo(fmt.Sprintf("Looking up itemID for medID %s", mrnDayAction.MedicationID))
+					itemId, logErr := p.erxItemIdLinks.GetItemId(mrnDayAction.MedicationID)
+					if logErr != nil {
+						p.logger.LogError(logErr.logMessage)
+						fmt.Println(logErr.errMessage)
+					} else {
+						p.logger.LogInfo(fmt.Sprintf("ItemID %s found for medID %s", itemId, mrnDayAction.MedicationID))
+						if _, okay := itemIdMrnDayActionMap[itemId]; !okay {
+							itemIdMrnDayActionMap[itemId] = []MarAction{}
+						}
+
+						itemIdMrnDayActionMap[itemId] = append(itemIdMrnDayActionMap[itemId], mrnDayAction)
+					}
+				}
+			}
+
 			//-- Loop through each patient in the mrnDayEvent Map
 			for mrn, mrnDayEvents := range mrnDayEventMap {
 				p.logger.LogInfo(fmt.Sprintf("%d control events found for mrn %s on %s",
@@ -296,25 +317,6 @@ func (p *Process) matchControlEventActions() {
 					}
 
 					itemIdMrnDayEventMap[mrnDayEvent.ItemID] = append(itemIdMrnDayEventMap[mrnDayEvent.ItemID], mrnDayEvent)
-				}
-
-				//-- For each action in the mrn-day actions, seperate them into a map[itemId][]itemID-mrn-day actions
-				//-- MAR actions have medIDs so itemID has to be retrieved from ERxItemIdLinks.GetItemId()
-				itemIdMrnDayActionMap = map[string][]MarAction{}
-				for _, mrnDayAction := range mrnDayActionMap[mrn] {
-					p.logger.LogInfo(fmt.Sprintf("Looking up itemID for medID %s", mrnDayAction.MedicationID))
-					itemId, logErr := p.erxItemIdLinks.GetItemId(mrnDayAction.MedicationID)
-					if logErr != nil {
-						p.logger.LogError(logErr.logMessage)
-						fmt.Println(logErr.errMessage)
-					} else {
-						p.logger.LogInfo(fmt.Sprintf("ItemID %s found for medID %s", itemId, mrnDayAction.MedicationID))
-						if _, okay := itemIdMrnDayActionMap[itemId]; !okay {
-							itemIdMrnDayActionMap[itemId] = []MarAction{}
-						}
-
-						itemIdMrnDayActionMap[itemId] = append(itemIdMrnDayActionMap[itemId], mrnDayAction)
-					}
 				}
 
 				for itemID, itemIdMrnDayEvents := range itemIdMrnDayEventMap {
