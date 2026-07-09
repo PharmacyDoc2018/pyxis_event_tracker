@@ -126,6 +126,7 @@ func quickDisplayName(f func(string) (string, *logError), s string) string {
 }
 
 func printfln(format string, a ...any) (n int, err error) {
-	n, err = fmt.Println(fmt.Sprintf(format, a))
+	b := a
+	n, err = fmt.Println(fmt.Sprintf(format, b...))
 	return n, err
 }
