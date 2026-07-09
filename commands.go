@@ -751,4 +751,77 @@ func (p *Process) setupCommands() {
 		Name:     "pyxis",
 		Required: true,
 	})
+
+	//-------------------------- Event Action Selection Commands ------------------------------//
+	p.cliConfig.AddCommand("select unmatched event", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("select unmatched event command executed")
+
+		pyxis := ""
+		id := ""
+
+		for _, arg := range args {
+			switch arg.Name {
+			case "pyxis":
+				pyxis = arg.Val
+
+			case "id":
+				id = arg.Val
+			}
+		}
+
+		if pyxis == "" {
+			p.logger.LogError("Command failed. Pyxis cannot be blank")
+			return fmt.Errorf("error. pyxis cannot be blank")
+		}
+
+		if id == "" {
+			p.logger.LogError("Command failed. Id cannot be blank")
+			return fmt.Errorf("error. id cannot be blank")
+		}
+
+		iLog := 0
+		found := false
+		for i, log := range p.PyxisEventLogs {
+			if log.PyxisName == pyxis {
+				found = true
+				iLog = i
+				break
+			}
+		}
+		if !found {
+			p.logger.LogError(fmt.Sprintf("Command failed. %s Pyxis not found", pyxis))
+			return fmt.Errorf("error. %s pyxis not found", pyxis)
+		}
+
+		index := 0
+		found = false
+		for i, unmatchedEvent := range p.PyxisEventLogs[iLog].ControlEventLog.UnmatchedEvents {
+			if unmatchedEvent.ItemTransactionKey.String() == id {
+				found = true
+				index = i
+			}
+		}
+		if !found {
+			p.logger.LogError(fmt.Sprintf("Command failed. Unmatched event %s not found", id))
+			return fmt.Errorf("error. unmatched event %s not found", id)
+		}
+
+		logErr := p.selectedEventActions.SelectUnmatchedEvent(p.PyxisEventLogs[iLog].ControlEventLog, index)
+		if logErr != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", logErr.logMessage))
+			return logErr
+		}
+
+		p.logger.LogInfo(fmt.Sprintf("Unmatched event %s added to selection", id))
+		printfln("unmatched event %s added to selection", id)
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "pyxis",
+		Required: true,
+	}, cli.CommandArg{
+		Name:     "id",
+		Required: true,
+	})
+
 }
