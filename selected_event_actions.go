@@ -1,0 +1,138 @@
+package main
+
+import (
+	"fmt"
+	"sort"
+	"strconv"
+	"time"
+)
+
+type SelectedEventActions struct {
+	Map map[EventTrailItem]struct{}
+}
+
+func (s *SelectedEventActions) RemoveTrailAndSelect(controlEventTrail *ControlEventTrail, index int) *logError {
+	//-- Check index is valid
+	if index >= len(controlEventTrail.EventTrails) {
+		return &logError{
+			errMessage: fmt.Sprintf("error. invalid index: index = %d last index = %d", index, len(controlEventTrail.EventTrails)-1),
+			logMessage: fmt.Sprintf("Error. Invalid index: index = %d last index = %d", index, len(controlEventTrail.EventTrails)-1),
+		}
+	}
+	//-- Verify that items aren't already selected
+	for _, item := range controlEventTrail.EventTrails[index].Trail {
+		if _, okay := s.Map[item]; okay {
+			switch item.Type {
+			case pyxisEvent:
+				return &logError{
+					errMessage: fmt.Sprintf("error. pyxis event %s already selected", item.PyxisEvent.ItemTransactionKey.String()),
+					logMessage: fmt.Sprintf("Error. Pyxis event %s already selected", item.PyxisEvent.ItemTransactionKey.String()),
+				}
+
+			case marAction:
+				return &logError{
+					errMessage: fmt.Sprintf("error. mar action with order number %s already selected", item.MarAction.OrderNumber),
+					logMessage: fmt.Sprintf("Error. MAR action with order number %s already selected", item.MarAction.OrderNumber),
+				}
+			}
+		}
+	}
+
+	//-- Add EventTrailItems to the selected map
+	for _, item := range controlEventTrail.EventTrails[index].Trail {
+		s.Map[item] = struct{}{}
+	}
+
+	//-- Remove the EventTrail containing selected events from the controlEventTrail
+	controlEventTrail.EventTrails = append(controlEventTrail.EventTrails[:index], controlEventTrail.EventTrails[index+1:]...)
+
+	return nil
+
+}
+
+func (s *SelectedEventActions) SelectUnmatchedEvent(controlEventLog *ControlEventLog, index int) *logError {
+	//-- Check that index is valid
+	if index >= len(controlEventLog.UnmatchedEvents) {
+		return &logError{
+			errMessage: fmt.Sprintf("error. invalid index: index = %d last index = %d", index, len(controlEventLog.GetLoggedControlEventKeys())),
+			logMessage: fmt.Sprintf("Error. Invalid index: index = %d last index = %d", index, len(controlEventLog.GetLoggedControlEventKeys())),
+		}
+	}
+
+	unmatchedEventTrailItem := EventTrailItem{
+		Type:       pyxisEvent,
+		PyxisEvent: controlEventLog.UnmatchedEvents[index],
+	}
+
+	//-- Verify that event isn't already selected
+	if _, okay := s.Map[unmatchedEventTrailItem]; okay {
+		return &logError{
+			errMessage: fmt.Sprintf("error. pyxis event %s is already selected", unmatchedEventTrailItem.PyxisEvent.ItemTransactionKey.String()),
+			logMessage: fmt.Sprintf("Error. Pyxis event %s is already selected", unmatchedEventTrailItem.PyxisEvent.ItemTransactionKey.String()),
+		}
+	}
+
+	//-- Add unmatchedEvent to selecte map as an EventTrailItem
+	s.Map[unmatchedEventTrailItem] = struct{}{}
+
+	//-- Remove event from unmatched events
+	controlEventLog.UnmatchedEvents = append(controlEventLog.UnmatchedEvents[:index], controlEventLog.UnmatchedEvents[index+1:]...)
+
+	return nil
+
+}
+
+func (s *SelectedEventActions) PrintSelected() {
+	items := []EventTrailItem{}
+	for item := range s.Map {
+		items = append(items, item)
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		dateTimeOne := time.Time{}
+		switch items[i].Type {
+		case pyxisEvent:
+			dateTimeOne = items[i].PyxisEvent.TxDateTime
+
+		case marAction:
+			dateTimeOne = items[i].MarAction.SavedTime
+		}
+
+		dateTimeTwo := time.Time{}
+		switch items[j].Type {
+		case pyxisEvent:
+			dateTimeOne = items[j].PyxisEvent.TxDateTime
+
+		case marAction:
+			dateTimeOne = items[j].MarAction.SavedTime
+		}
+
+		return dateTimeOne.Before(dateTimeTwo)
+	})
+
+	for _, item := range items {
+		switch item.Type {
+		case pyxisEvent:
+			printfln("Transaction Type: %s", item.PyxisEvent.TransactionType)
+			printfln("Tx Date Time: %s", item.PyxisEvent.TxDateTime.Format("2006-01-02 1504"))
+			printfln("User ID: %s", item.PyxisEvent.UserID)
+			printfln("User Name: %s", item.PyxisEvent.UserName)
+			printfln("Display Name: %s %s", item.PyxisEvent.MedDisplayName)
+			printfln("Amount: %s", strconv.FormatFloat(item.PyxisEvent.AmountReferenced, 'f', -1, 64), item.PyxisEvent.AmountReferencedUnits)
+			printfln("MRN: %s", item.PyxisEvent.MRN)
+			printfln("Witness: %s", item.PyxisEvent.WitnessName)
+			fmt.Println()
+
+		case marAction:
+			printfln("MAR Action: %s", item.MarAction.MarAction)
+			printfln("Saved Name: %s", item.MarAction.SavedTime.Format("2006-01-02 1504"))
+			printfln("User ID: %s", item.MarAction.UserID)
+			printfln("User Name: %s", item.MarAction.UserName)
+			printfln("Display Name: %s %s", item.MarAction.DisplayName)
+			printfln("Dose: %s", strconv.FormatFloat(item.MarAction.CalcMinDose, 'f', -1, 64), item.MarAction.CalcDoseUnitDescription)
+			printfln("MRN: %s", item.MarAction.MRN)
+			printfln("Patient Name: %s", item.MarAction.PtName)
+			fmt.Println()
+		}
+	}
+}

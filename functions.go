@@ -124,3 +124,8 @@ func quickDisplayName(f func(string) (string, *logError), s string) string {
 	}
 	return r
 }
+
+func printfln(format string, a ...any) (n int, err error) {
+	n, err = fmt.Println(fmt.Sprintf(format, a))
+	return n, err
+}

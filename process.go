@@ -21,24 +21,25 @@ const pyxisEventLogSettingsFolder = "log_settings"
 const controlEventLogsFolder = "control_logs"
 
 type Process struct {
-	PyxisEventLogs     []*PyxisEventLog
-	pathToData         string
-	pathToSettings     string
-	pathToOut          string
-	logger             processLogger
-	testMarActionRes   []database.MarActionResponse
-	state              *processState
-	settings           *Settings
-	erxs               *ERxDict
-	itemIDs            *ItemIdDict
-	erxItemIdLinks     *ERxItemIdLinks
-	departmentCoverage *DepartmentCoverage
-	db                 *sql.DB
-	dbq                *database.Queries
-	cliConfig          *cli.Config
-	cache              *cache.Cache
-	cacheStop          chan struct{}
-	dbConnection       bool
+	PyxisEventLogs       []*PyxisEventLog
+	selectedEventActions *SelectedEventActions
+	pathToData           string
+	pathToSettings       string
+	pathToOut            string
+	logger               processLogger
+	testMarActionRes     []database.MarActionResponse
+	state                *processState
+	settings             *Settings
+	erxs                 *ERxDict
+	itemIDs              *ItemIdDict
+	erxItemIdLinks       *ERxItemIdLinks
+	departmentCoverage   *DepartmentCoverage
+	db                   *sql.DB
+	dbq                  *database.Queries
+	cliConfig            *cli.Config
+	cache                *cache.Cache
+	cacheStop            chan struct{}
+	dbConnection         bool
 }
 
 func (p *Process) startupLogsCheck() {
@@ -374,6 +375,10 @@ func initProcess() *Process {
 		fmt.Println(err.Error())
 	} else {
 		p.state.ItemIDsLoadSuccessful()
+	}
+
+	p.selectedEventActions = &SelectedEventActions{
+		Map: map[EventTrailItem]struct{}{},
 	}
 
 	//-- Check for new Pyxis events
