@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -178,7 +179,11 @@ func (p *Process) matchControlEventActions() {
 		mrnMap = nil
 
 		for key := range itemIDsMap {
-			medIDs = append(medIDs, p.erxItemIdLinks.GetMedIds(key)...)
+			newIDs, logErr := p.erxItemIdLinks.GetMedIds(key)
+			if logErr != nil {
+				p.logger.LogError(logErr.logMessage)
+			}
+			medIDs = append(medIDs, newIDs...)
 		}
 		itemIDsMap = nil
 
@@ -220,7 +225,7 @@ func (p *Process) matchControlEventActions() {
 		for _, unmatchedEvent := range unmatchedEvents {
 			startDayTime := timeStartDay(unmatchedEvent.TxDateTime)
 			mrn := unmatchedEvent.MRN
-			itemID := unmatchedEvent.ItemID
+			itemIDs := strings.Join(p.erxItemIdLinks.GetAssociatedItemIds(unmatchedEvent.ItemID), ",")
 
 			if _, okay := eventMap[startDayTime]; !okay {
 				eventMap[startDayTime] = map[string]map[string][]PyxisEvent{}
@@ -230,25 +235,42 @@ func (p *Process) matchControlEventActions() {
 				eventMap[startDayTime][mrn] = map[string][]PyxisEvent{}
 			}
 
-			if _, okay := eventMap[startDayTime][mrn][itemID]; !okay {
-				eventMap[startDayTime][mrn][itemID] = []PyxisEvent{}
+			if _, okay := eventMap[startDayTime][mrn][itemIDs]; !okay {
+				eventMap[startDayTime][mrn][itemIDs] = []PyxisEvent{}
 			}
 
-			eventMap[startDayTime][mrn][itemID] = append(eventMap[startDayTime][mrn][itemID], unmatchedEvent)
+			eventMap[startDayTime][mrn][itemIDs] = append(eventMap[startDayTime][mrn][itemIDs], unmatchedEvent)
 		}
 
 		actionMap := map[time.Time]map[string]map[string][]MarAction{}
 		for _, marAction := range marActions {
 			startDayTime := timeStartDay(marAction.SavedTime)
 			mrn := marAction.MRN
-			itemID, logErr := p.erxItemIdLinks.GetItemId(marAction.MedicationID)
+
+			//-- Get itemIDs linked to MedID. Then get all possible itemIDs linked to those itemIDs
+			ItemIDs, logErr := p.erxItemIdLinks.GetItemIds(marAction.MedicationID)
 			if logErr != nil {
-				p.logger.LogError(fmt.Sprintf("Error. no itemID linked to medID %s. No MAR actions will be matched for mrn %s on %s for that medID",
+				p.logger.LogError(fmt.Sprintf("Error. no itemIDs linked to medID %s. No MAR actions will be matched for mrn %s on %s for that medID",
 					marAction.MedicationID,
 					marAction.MRN,
 					startDayTime.Format("2006-01-02")))
 				continue
 			}
+			allItemIDsMap := map[string]struct{}{}
+			for _, itemID := range ItemIDs {
+				ids := p.erxItemIdLinks.GetAssociatedItemIds(itemID)
+				for _, id := range ids {
+					allItemIDsMap[id] = struct{}{}
+				}
+			}
+			allItemIDs := []string{}
+			for id := range allItemIDsMap {
+				allItemIDs = append(allItemIDs, id)
+			}
+			sort.Slice(allItemIDs, func(i, j int) bool {
+				return allItemIDs[i] < allItemIDs[j]
+			})
+			itemIDs := strings.Join(allItemIDs, ",")
 
 			if _, okay := actionMap[startDayTime]; !okay {
 				actionMap[startDayTime] = map[string]map[string][]MarAction{}
@@ -258,11 +280,11 @@ func (p *Process) matchControlEventActions() {
 				actionMap[startDayTime][mrn] = map[string][]MarAction{}
 			}
 
-			if _, okay := actionMap[startDayTime][mrn][itemID]; !okay {
-				actionMap[startDayTime][mrn][itemID] = []MarAction{}
+			if _, okay := actionMap[startDayTime][mrn][itemIDs]; !okay {
+				actionMap[startDayTime][mrn][itemIDs] = []MarAction{}
 			}
 
-			actionMap[startDayTime][mrn][itemID] = append(actionMap[startDayTime][mrn][itemID], marAction)
+			actionMap[startDayTime][mrn][itemIDs] = append(actionMap[startDayTime][mrn][itemIDs], marAction)
 		}
 
 		for startDayTime := range eventMap {

@@ -149,11 +149,15 @@ func (p *Process) setupCommands() {
 		p.logger.LogInfo("remove ERxItemId Link command executed")
 
 		erx := ""
+		itemId := ""
 
 		for _, arg := range args {
 			switch arg.Name {
 			case "erx":
 				erx = arg.Val
+
+			case "itemId":
+				itemId = arg.Val
 			}
 		}
 
@@ -162,42 +166,78 @@ func (p *Process) setupCommands() {
 			return fmt.Errorf("error. erx cannot be blank")
 		}
 
-		itemID, logErr := p.erxItemIdLinks.GetItemId(erx)
+		if itemId == "" {
+			p.logger.LogError("Command failed: itemId cannot be blank")
+			return fmt.Errorf("error. itemId cannot be blank")
+		}
+
+		logErr := p.erxItemIdLinks.Remove(erx, itemId)
 		if logErr != nil {
 			p.logger.LogError("Command failed: " + logErr.logMessage)
 			return logErr
 		}
 
-		logErr = p.erxItemIdLinks.Remove(erx)
-		if logErr != nil {
-			p.logger.LogError("Command failed: " + logErr.logMessage)
-			return logErr
-		}
-
-		p.logger.LogInfo(fmt.Sprintf("erx %s link removed from itemID %s", erx, itemID))
-		fmt.Printf("erx %s link removed from itemID %s\n", erx, itemID)
+		p.logger.LogInfo(fmt.Sprintf("erx %s link removed from itemID %s", erx, itemId))
+		fmt.Printf("erx %s link removed from itemID %s\n", erx, itemId)
 		return nil
 
 	}, cli.CommandArg{
 		Name:     "erx",
 		Required: true,
+	}, cli.CommandArg{
+		Name:     "itemId",
+		Required: true,
 	})
 
-	p.cliConfig.AddCommand("list all ERxItemId links", func(args []cli.CommandArg) error {
-		p.logger.LogInfo("list all ERxItemId links command executed")
+	p.cliConfig.AddCommand("list all itemID associations", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("list all itemID associations command executed")
 
-		itemIDs := p.erxItemIdLinks.GetAllItemIds()
-		for _, itemID := range itemIDs {
-			medIDs := p.erxItemIdLinks.GetMedIds(itemID)
-			fmt.Printf("ERXs linked to itemID %s %s:\n", itemID, quickDisplayName(p.itemIDs.DisplayName, itemID))
-			for _, medID := range medIDs {
-				fmt.Printf("   %s [%s]\n", quickDisplayName(p.erxs.DisplayName, medID), medID)
+		itemId := ""
+		for _, arg := range args {
+			switch arg.Name {
+			case "itemId":
+				itemId = arg.Val
 			}
-			fmt.Println()
 		}
 
+		if itemId == "" {
+			p.logger.LogError("Command failed. ItemId cannot be blank")
+			return fmt.Errorf("error. itemId cannot be blank")
+		}
+
+		printfln("ItemID %s %s is directly linked to the following MedIDs:", itemId, quickDisplayName(p.itemIDs.DisplayName, itemId))
+		medIDs, _ := p.erxItemIdLinks.GetMedIds(itemId)
+		for _, id := range medIDs {
+			printfln("   %s[%s]", quickDisplayName(p.erxs.DisplayName, id), id)
+		}
+		fmt.Println()
+
+		printfln("ItemID %s %s is associated with the following ItemIDs:", itemId, quickDisplayName(p.itemIDs.DisplayName, itemId))
+
+		for _, id := range p.erxItemIdLinks.GetAssociatedItemIds(itemId) {
+			printfln("   %s %s", id, quickDisplayName(p.itemIDs.DisplayName, id))
+		}
+		fmt.Println()
+
+		printfln("ItemED %s %s is associated with the following MedIDs:", itemId, quickDisplayName(p.itemIDs.DisplayName, itemId))
+
+		medIdMap := map[string]struct{}{}
+		for _, id := range p.erxItemIdLinks.GetAssociatedItemIds(itemId) {
+			medIds, _ := p.erxItemIdLinks.GetMedIds(id)
+			for _, medId := range medIds {
+				medIdMap[medId] = struct{}{}
+			}
+		}
+		for id := range medIdMap {
+			printfln("   %s[%s]", quickDisplayName(p.erxs.DisplayName, id), id)
+		}
+
+		fmt.Println()
 		return nil
 
+	}, cli.CommandArg{
+		Name:     "itemId",
+		Required: true,
 	})
 
 	//-------------------- Department Coverage Commands -------------------------//
