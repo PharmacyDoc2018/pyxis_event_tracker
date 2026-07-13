@@ -16,25 +16,29 @@ type EventType int
 const (
 	pyxisEvent = iota
 	marAction
+	correctionEvent
 )
 
 type CorrectionEvent struct {
-	BeSafe      string
-	WriteUpFile string
-	UserID      string
-	UserName    string
-	ItemId      string
-	DisplayName string
-	Amount      float64
-	Units       string
-	MRN         string
-	PtName      string
+	EventDate      time.Time
+	CorrectionDate time.Time
+	BeSafe         string
+	WriteUpFile    string
+	UserID         string
+	UserName       string
+	ItemId         string
+	DisplayName    string
+	Amount         float64
+	Units          string
+	MRN            string
+	PtName         string
 }
 
 type EventTrailItem struct {
-	Type       EventType
-	PyxisEvent PyxisEvent
-	MarAction  MarAction
+	Type            EventType
+	PyxisEvent      PyxisEvent
+	MarAction       MarAction
+	CorrectionEvent CorrectionEvent
 }
 
 type EventTrail struct {

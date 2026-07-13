@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
+	"time"
 
 	"github.com/PharmacyDoc2018/pyxis_event_tracker/cli"
 )
@@ -771,6 +773,8 @@ func (p *Process) setupCommands() {
 			return fmt.Errorf("error. %s pyxis not found", pyxis)
 		}
 
+		p.PyxisEventLogs[index].ControlEventLog.SortUnmatchedEvents()
+
 		for _, unmatchedEvent := range p.PyxisEventLogs[index].ControlEventLog.UnmatchedEvents {
 			fmt.Printf("Key: %s\nType: %s\nDateTime: %s\nUserID: %s\nUserName: %s\nDisplayName: %s\nAmount: %s\nMRN: %s\nWitness: %s\n",
 				unmatchedEvent.ItemTransactionKey.String(),
@@ -864,4 +868,124 @@ func (p *Process) setupCommands() {
 		Required: true,
 	})
 
+	//----------------------- Manual Control Matching Commands ------------------------//
+
+	p.cliConfig.AddCommand("match selected event actions", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("match selected event actions command executed")
+
+		pyxis := ""
+		for _, arg := range args {
+			switch arg.Name {
+			case "pyxis":
+				pyxis = arg.Val
+			}
+		}
+
+		logIndex := 0
+		found := false
+		for i, log := range p.PyxisEventLogs {
+			if log.PyxisName == pyxis {
+				found = true
+				logIndex = i
+				break
+			}
+		}
+		if !found {
+			p.logger.LogError(fmt.Sprintf("Command failed. %s Pyxis not found", pyxis))
+			return fmt.Errorf("error. %s pyxis not found", pyxis)
+		}
+
+		if pyxis == "" {
+			p.logger.LogError("Command failed. Pyxis cannot be blank")
+			return fmt.Errorf("error. pyxis cannot be blank")
+		}
+
+		events := []EventTrailItem{}
+		for event := range p.selectedEventActions.Map {
+			events = append(events, event)
+		}
+
+		if len(events) == 0 {
+			p.logger.LogError("Command failed. no selected events")
+			return fmt.Errorf("error. no selected events")
+		}
+
+		sort.Slice(events, func(i, j int) bool {
+			dateTimeOne := time.Time{}
+			switch events[i].Type {
+			case pyxisEvent:
+				dateTimeOne = events[i].PyxisEvent.TxDateTime
+
+			case marAction:
+				dateTimeOne = events[i].MarAction.SavedTime
+			}
+
+			dateTimeTwo := time.Time{}
+			switch events[j].Type {
+			case pyxisEvent:
+				dateTimeTwo = events[j].PyxisEvent.TxDateTime
+
+			case marAction:
+				dateTimeTwo = events[j].MarAction.SavedTime
+			}
+
+			return dateTimeOne.Before(dateTimeTwo)
+		})
+
+		found = false
+		index := 0
+		for i, event := range events {
+			if event.Type == correctionEvent {
+				found = true
+				index = i
+				break
+			}
+		}
+		if !found {
+			for i, event := range events {
+				if event.Type == pyxisEvent {
+					found = true
+					index = i
+					break
+				}
+			}
+			if !found {
+				p.logger.LogError("Command failed. Selections must include at least one Pyxis event if a Correction event is not present")
+				return fmt.Errorf("error. selections must include at least one pyxis event if a correction event is not present")
+			}
+
+		}
+
+		mrn := ""
+		itemId := ""
+		date := time.Time{}
+
+		switch events[index].Type {
+		case correctionEvent:
+			mrn = events[index].CorrectionEvent.MRN
+			itemId = events[index].CorrectionEvent.ItemId
+			date = timeStartDay(events[index].CorrectionEvent.EventDate)
+
+		case pyxisEvent:
+			mrn = events[index].PyxisEvent.MRN
+			itemId = events[index].PyxisEvent.ItemID
+			date = timeStartDay(events[index].PyxisEvent.TxDateTime)
+		}
+
+		logErr := p.PyxisEventLogs[logIndex].ControlEventLog.LinkEventActions(mrn, itemId, date, events...)
+		if logErr != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", logErr.logMessage))
+			return logErr
+		}
+
+		p.selectedEventActions.Map = map[EventTrailItem]struct{}{}
+		p.logger.LogInfo(fmt.Sprintf("Selected events successfully linked and added to  %s control event log", pyxis))
+		printfln("selected events successfully linked and added to %s control event log", pyxis)
+
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "pyxis",
+		Required: true,
+	})
 }
