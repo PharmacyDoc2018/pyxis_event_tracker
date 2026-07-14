@@ -104,3 +104,38 @@ func getMarActions(p *Process, params database.GetMarAdminActionsByPatientsDaysM
 	return actions, nil
 
 }
+
+func getMarActionsByOrderNumber(p *Process, orderNumber string) ([]database.MarActionResponse, error) {
+	key := "GetMarActionsByOrderNumber"
+	key += orderNumber
+
+	p.logger.LogInfo(fmt.Sprintf("Query started. Getting MAR Actions for order number %s", orderNumber))
+
+	data, okay := p.cache.Get(key)
+	if okay {
+		p.logger.LogInfo("Query results found in cache")
+		actions := []database.MarActionResponse{}
+		err := json.Unmarshal(data, &actions)
+		if err != nil {
+			return nil, err
+		}
+		return actions, nil
+	}
+
+	p.logger.LogInfo("Query results not found in cache. Querying database")
+	actions, err := p.dbq.GetMarActionsByOrderNumber(context.Background(), orderNumber)
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Error executing SQL query: %s", err.Error()))
+		return nil, err
+	}
+
+	p.logger.LogInfo("Query successful. Adding to cache")
+	data, err = json.Marshal(&actions)
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Error marshalling MAR actions: %s", err.Error()))
+		return nil, err
+	}
+	p.cache.Add(key, data)
+
+	return actions, nil
+}
