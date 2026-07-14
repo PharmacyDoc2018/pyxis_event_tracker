@@ -75,9 +75,6 @@ func (s *SelectedEventActions) SelectUnmatchedEvent(controlEventLog *ControlEven
 	//-- Add unmatchedEvent to selecte map as an EventTrailItem
 	s.Map[unmatchedEventTrailItem] = struct{}{}
 
-	//-- Remove event from unmatched events
-	controlEventLog.UnmatchedEvents = append(controlEventLog.UnmatchedEvents[:index], controlEventLog.UnmatchedEvents[index+1:]...)
-
 	return nil
 
 }
