@@ -133,3 +133,32 @@ func (s *SelectedEventActions) PrintSelected() {
 		}
 	}
 }
+
+func (s *SelectedEventActions) Add(item EventTrailItem) *logError {
+	if _, okay := s.Map[item]; okay {
+		switch item.Type {
+		case pyxisEvent:
+			id := item.PyxisEvent.ItemTransactionKey.String()
+			return &logError{
+				logMessage: fmt.Sprintf("Error. Pyxis event %s is already selected", id),
+				errMessage: fmt.Sprintf("error. pyxis event %s is already selected", id),
+			}
+
+		case marAction:
+			orderNumber := item.MarAction.OrderNumber
+			return &logError{
+				logMessage: fmt.Sprintf("Error. MAR action with order number %s is already selected", orderNumber),
+				errMessage: fmt.Sprintf("error. mar action with order number %s is already selected", orderNumber),
+			}
+
+		case correctionEvent:
+			return &logError{
+				logMessage: "Error. That correction event is already selected",
+				errMessage: "error. that correction event is already selected",
+			}
+		}
+	}
+
+	s.Map[item] = struct{}{}
+	return nil
+}

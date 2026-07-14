@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/csv"
 	"fmt"
 	"os"
@@ -865,6 +866,100 @@ func (p *Process) setupCommands() {
 		Required: true,
 	}, cli.CommandArg{
 		Name:     "id",
+		Required: true,
+	})
+
+	p.cliConfig.AddCommand("select mar action", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("select mar action command executed")
+
+		orderNumber := ""
+		for _, arg := range args {
+			switch arg.Name {
+			case "orderNumber":
+				orderNumber = arg.Val
+			}
+		}
+
+		if orderNumber == "" {
+			p.logger.LogError("Command failed. orderNumber cannot be blank")
+			return fmt.Errorf("error. orderNumber cannot be blank")
+		}
+
+		if !isNumeric(orderNumber) {
+			p.logger.LogError("Command failed. order number must only contain numbers")
+			return fmt.Errorf("error. orderNumber must only contain numbers")
+		}
+
+		responseActions, err := getMarActionsByOrderNumber(p, orderNumber)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
+			return err
+		}
+
+		actions := p.parseMarActions(responseActions)
+
+		event := EventTrailItem{
+			Type: marAction,
+		}
+		switch len(actions) {
+		case 0:
+			p.logger.LogError(fmt.Sprintf("Command failed. No MAR actions found with order number %s", orderNumber))
+			return fmt.Errorf("error. no mar actions found with order number %s", orderNumber)
+
+		case 1:
+			event.MarAction = actions[0]
+
+		default:
+			fmt.Println("Select which event to select:")
+			selectActionScanner := bufio.NewScanner(os.Stdin)
+			input := ""
+
+			for i, action := range actions {
+				printfln("%d. MAR Action: %s", i+1, action.MarAction)
+				printfln("   Date Time: %s", action.SavedTime.Format("2006-01-02 1504"))
+				printfln("   Display Name: %s", action.DisplayName)
+				printfln("   Dose: %s %s", strconv.FormatFloat(action.CalcMinDose, 'f', -1, 64), action.CalcDoseUnitDescription)
+				printfln("   User: %s (%s)", action.UserName, action.UserID)
+				fmt.Println()
+			}
+
+			selectActionScanner.Scan()
+			input = selectActionScanner.Text()
+			index, err := strconv.Atoi(input)
+			if err != nil {
+				p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
+				return err
+			}
+			index--
+
+			if index >= len(actions) {
+				p.logger.LogError(fmt.Sprintf("Command failed. Invalid input: %s", input))
+				return fmt.Errorf("error. invalid input %s", input)
+			}
+
+			event.MarAction = actions[index]
+		}
+
+		logErr := p.selectedEventActions.Add(event)
+		if logErr != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", logErr.logMessage))
+			return logErr
+		}
+
+		p.logger.LogInfo(fmt.Sprintf("MAR Action with order number %s added to selection", orderNumber))
+
+		fmt.Println("MAR Action added to selection: ")
+		printfln("MAR Action: %s", event.MarAction.MarAction)
+		printfln("Date Time: %s", event.MarAction.SavedTime.Format("2006-01-02 1504"))
+		printfln("Display Name: %s", event.MarAction.DisplayName)
+		printfln("Dose: %s %s", strconv.FormatFloat(event.MarAction.CalcMinDose, 'f', -1, 64), event.MarAction.CalcDoseUnitDescription)
+		printfln("User: %s (%s)", event.MarAction.UserName, event.MarAction.UserID)
+		fmt.Println()
+
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "orderNumber",
 		Required: true,
 	})
 
