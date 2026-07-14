@@ -435,3 +435,71 @@ ORDER BY ma.SAVED_TIME;
 	return items, nil
 
 }
+
+const getMarActionByOrderNumber = `
+SELECT
+	ma.SAVED_TIME,
+	ma.ORDER_MED_ID,
+	mc.FilteredMARAction,
+	o.DISPLAY_NAME, 
+	o.MEDICATION_ID,
+	u.SYSTEM_LOGIN,
+	u.NAME,
+	o.CalcDoseUnitDescription,
+	o.CALC_MIN_DOSE,
+	pat.PAT_MRN_ID,
+	pat.PAT_NAME
+FROM dbo.fctMARActions ma
+INNER JOIN dbo.dimMARCharacteristics mc
+	ON ma.sk_dim_MARChar = mc.sk_dim_MARChar
+INNER JOIN dbo.fctORDER_MED o
+	ON ma.ORDER_MED_ID = o.ORDER_MED_ID
+INNER JOIN dbo.dimUsers u
+	ON ma.MAR_ActionUser = u.User_ID
+INNER JOIN dbo.dimPatient pat
+	ON pat.PAT_ID = o.PAT_ID
+WHERE mc.FilteredMARAction IN (
+	'Given',
+	'New Bag'
+)
+AND ma.ORDER_MED_ID = @order
+ORDER BY ma.SAVED_TIME;
+`
+
+func (q *Queries) GetMarActionsByOrderNumber(ctx context.Context, orderNumber string) ([]MarActionResponse, error) {
+	rows, err := q.db.QueryContext(ctx, getMarActionByOrderNumber, sql.Named("order", orderNumber))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []MarActionResponse
+	for rows.Next() {
+		var i MarActionResponse
+		if err := rows.Scan(
+			&i.SavedTime,
+			&i.OrderMedId,
+			&i.FilteredMarAction,
+			&i.DisplayName,
+			&i.MedicationId,
+			&i.SystemLogin,
+			&i.Name,
+			&i.CalcDoseUnitDescription,
+			&i.CalcMinDose,
+			&i.PatMRN,
+			&i.PatName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
