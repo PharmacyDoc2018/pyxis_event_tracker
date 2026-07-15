@@ -384,6 +384,17 @@ func (p *Process) loadPyxisEventlog(pyxis string) error {
 		PyxisName         string
 	}
 
+	for i := range p.PyxisEventLogs {
+		if p.PyxisEventLogs[i].PyxisName == pyxis {
+			if len(p.PyxisEventLogs[i].Log) == 0 {
+				p.PyxisEventLogs = append(p.PyxisEventLogs[:i], p.PyxisEventLogs[i+1:]...)
+				break
+			} else {
+				return fmt.Errorf("error. %s pyxis already loaded", pyxis)
+			}
+		}
+	}
+
 	file, err := os.Open(filepath.Join(p.pathToData, pyxisEventLogsFolder, pyxis+".csv"))
 	if err != nil {
 		p.logger.LogError(fmt.Sprintf("Error. Unable to load %s Pyxis event log: %s", pyxis, err.Error()))

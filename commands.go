@@ -963,6 +963,92 @@ func (p *Process) setupCommands() {
 		Required: true,
 	})
 
+	p.cliConfig.AddCommand("select pyxis event", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("select pyxis event command executed")
+
+		pyxis := ""
+		id := ""
+
+		for _, arg := range args {
+			switch arg.Name {
+			case "pyxis":
+				pyxis = arg.Val
+
+			case "id":
+				id = arg.Val
+			}
+		}
+
+		if pyxis == "" {
+			p.logger.LogError("Command failed. pyxis cannot be blank")
+			return fmt.Errorf("error. pyxis cannot be blank")
+		}
+
+		if id == "" {
+			p.logger.LogError("Command failed. id cannot be blank")
+			return fmt.Errorf("error. id cannot be blank")
+		}
+
+		err := p.loadPyxisEventlog(pyxis)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
+			return err
+		}
+
+		logIndex := 0
+		found := false
+		for i, log := range p.PyxisEventLogs {
+			if log.PyxisName == pyxis {
+				found = true
+				logIndex = i
+			}
+		}
+		if !found {
+			p.logger.LogError(fmt.Sprintf("Command failed. %s Pyxis not found", pyxis))
+			return fmt.Errorf("error. %s pyxis not found", pyxis)
+		}
+
+		selectedEvent := PyxisEvent{}
+		found = false
+		for _, event := range p.PyxisEventLogs[logIndex].Log {
+			if event.ItemTransactionKey.String() == id {
+				found = true
+				selectedEvent = event
+			}
+		}
+		if !found {
+			p.logger.LogError(fmt.Sprintf("Command failed. Pyxis event %s not found", id))
+			return fmt.Errorf("error. pyxis event %s not found", id)
+		}
+
+		err = p.saveAndUnloadPyxisEventLogs()
+		if err != nil {
+			p.logger.LogError(err.Error())
+		}
+
+		selectedItem := EventTrailItem{
+			Type:       pyxisEvent,
+			PyxisEvent: selectedEvent,
+		}
+
+		logErr := p.selectedEventActions.Add(selectedItem)
+		if logErr != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", logErr.logMessage))
+			return logErr
+		}
+
+		p.logger.LogInfo(fmt.Sprintf("Pyxis event %s from %s added to selected event actions", id, pyxis))
+		printfln("pyxis event %s from %s added to selected event actions", id, pyxis)
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "pyxis",
+		Required: true,
+	}, cli.CommandArg{
+		Name:     "id",
+		Required: true,
+	})
+
 	//----------------------- Manual Control Matching Commands ------------------------//
 
 	p.cliConfig.AddCommand("match selected event actions", func(args []cli.CommandArg) error {
