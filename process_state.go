@@ -15,14 +15,15 @@ const (
 )
 
 type processState struct {
-	pyxisLogsLoaded    []string
-	mode               processMode
-	erxs               bool
-	itemIds            bool
-	eRxItemIdLinks     bool
-	departmentCoverage bool
-	dbConnection       bool
-	pyxisEventsLoaded  bool
+	pyxisLogsLoaded      []string
+	mode                 processMode
+	erxs                 bool
+	itemIds              bool
+	eRxItemIdLinks       bool
+	departmentCoverage   bool
+	dbConnection         bool
+	pyxisEventsLoaded    bool
+	correctionEventLinks bool
 }
 
 func (p *processState) UpdateState() {
@@ -59,6 +60,10 @@ func (p *processState) UpdateState() {
 		p.mode = SafetyMode
 	}
 
+	if !p.correctionEventLinks {
+		p.mode = SafetyMode
+	}
+
 	if !p.dbConnection {
 		p.mode = LocalOnly
 		return
@@ -81,6 +86,7 @@ func (p *processState) GetState() string {
 	res = res + "ItemIDs: " + boolStatus(p.itemIds) + "\n"
 	res = res + "ERxItemIdLinks: " + boolStatus(p.eRxItemIdLinks) + "\n"
 	res = res + "Department Coverage: " + boolStatus(p.departmentCoverage) + "\n"
+	res = res + "Correction Event Links: " + boolStatus(p.correctionEventLinks) + "\n"
 
 	return res
 }
@@ -118,6 +124,15 @@ func (p *processState) DepartmentCoverageOkay() bool {
 
 func (p *processState) DepartmentCoverageSuccessful() {
 	p.departmentCoverage = true
+	p.UpdateState()
+}
+
+func (p *processState) CorrectionEventLinksOkay() bool {
+	return p.correctionEventLinks
+}
+
+func (p *processState) CorrectionEventLinksSuccessful() {
+	p.correctionEventLinks = true
 	p.UpdateState()
 }
 

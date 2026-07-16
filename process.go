@@ -24,6 +24,7 @@ const controlEventLogsFolder = "control_logs"
 type Process struct {
 	PyxisEventLogs       []*PyxisEventLog
 	selectedEventActions *SelectedEventActions
+	correctionEventLinks *CorrectionEventLinks
 	pathToData           string
 	pathToSettings       string
 	pathToOut            string
@@ -399,6 +400,15 @@ func initProcess() *Process {
 		p.state.ItemIDsLoadSuccessful()
 	}
 
+	p.correctionEventLinks = initCorrectionEvents()
+	err, lr = p.correctionEventLinks.Load(p.pathToData)
+	p.logger.Log(lr)
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		p.state.CorrectionEventLinksSuccessful()
+	}
+
 	p.selectedEventActions = &SelectedEventActions{
 		Map: map[EventTrailItem]struct{}{},
 	}
@@ -482,6 +492,16 @@ func (p *Process) exit() {
 		}
 	} else {
 		p.logger.LogInfo("ItemIDs not being saved due to previous load error")
+	}
+
+	if p.state.CorrectionEventLinksOkay() {
+		err, lr := p.correctionEventLinks.Save(p.pathToData)
+		p.logger.Log(lr)
+		if err != nil {
+			fmt.Print(err.Error())
+		}
+	} else {
+		p.logger.LogInfo("Correction event links not being saved due to previous load error")
 	}
 
 	p.cliConfig.Rl.Close()

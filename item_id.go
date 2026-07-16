@@ -122,13 +122,13 @@ func (i *ItemIdDict) Save(dataPath string) (error, *logResponder) {
 
 	data, err := json.Marshal(&i)
 	if err != nil {
-		logger.AddError(fmt.Sprintf("Error marshalling ERXs: %s", err.Error()))
+		logger.AddError(fmt.Sprintf("Error marshalling itemIDs: %s", err.Error()))
 		return err, &logger
 	}
 
 	_, err = file.Write(data)
 	if err != nil {
-		logger.AddError(fmt.Sprintf("Error writting marshalled ERXs to file %s: %s", ERxFileName, err.Error()))
+		logger.AddError(fmt.Sprintf("Error writting marshalled itemIDs to file %s: %s", ERxFileName, err.Error()))
 		return err, &logger
 	}
 

@@ -19,21 +19,6 @@ const (
 	correctionEvent
 )
 
-type CorrectionEvent struct {
-	EventDate      time.Time
-	CorrectionDate time.Time
-	BeSafe         string
-	WriteUpFile    string
-	UserID         string
-	UserName       string
-	ItemId         string
-	DisplayName    string
-	Amount         float64
-	Units          string
-	MRN            string
-	PtName         string
-}
-
 type EventTrailItem struct {
 	Type            EventType
 	PyxisEvent      PyxisEvent
@@ -61,6 +46,37 @@ type ControlEventLog struct {
 }
 
 func (c *ControlEventLog) Sort() {
+	for i := range c.Log {
+		for j := range c.Log[i].EventTrails {
+			sort.Slice(c.Log[i].EventTrails[j], func(a, b int) bool {
+				dateTimeOne := time.Time{}
+				switch c.Log[i].EventTrails[j].Trail[a].Type {
+				case pyxisEvent:
+					dateTimeOne = c.Log[i].EventTrails[j].Trail[a].PyxisEvent.TxDateTime
+
+				case marAction:
+					dateTimeOne = c.Log[i].EventTrails[j].Trail[a].MarAction.SavedTime
+
+				case correctionEvent:
+					dateTimeOne = c.Log[i].EventTrails[j].Trail[a].CorrectionEvent.CorrectionDate
+				}
+
+				dateTimeTwo := time.Time{}
+				switch c.Log[i].EventTrails[j].Trail[b].Type {
+				case pyxisEvent:
+					dateTimeTwo = c.Log[i].EventTrails[j].Trail[b].PyxisEvent.TxDateTime
+
+				case marAction:
+					dateTimeTwo = c.Log[i].EventTrails[j].Trail[b].MarAction.SavedTime
+
+				case correctionEvent:
+					dateTimeTwo = c.Log[i].EventTrails[j].Trail[b].CorrectionEvent.CorrectionDate
+				}
+
+				return dateTimeOne.Before(dateTimeTwo)
+			})
+		}
+	}
 	sort.Slice(c.Log, func(i, j int) bool {
 		return c.Log[i].Date.Before(c.Log[j].Date)
 	})
@@ -477,6 +493,8 @@ func (c *ControlEventLog) MatchEvents(pyxisEvents []PyxisEvent, marActions []Mar
 }
 
 func (c *ControlEventLog) GenerateTrailSlices() [][]EventTrail {
+	c.Sort()
+
 	slices := [][]EventTrail{}
 	for _, event := range c.Log {
 		slices = append(slices, event.EventTrails)

@@ -1099,6 +1099,9 @@ func (p *Process) setupCommands() {
 
 			case marAction:
 				dateTimeOne = events[i].MarAction.SavedTime
+
+			case correctionEvent:
+				dateTimeOne = events[i].CorrectionEvent.CorrectionDate
 			}
 
 			dateTimeTwo := time.Time{}
@@ -1108,6 +1111,9 @@ func (p *Process) setupCommands() {
 
 			case marAction:
 				dateTimeTwo = events[j].MarAction.SavedTime
+
+			case correctionEvent:
+				dateTimeTwo = events[j].CorrectionEvent.CorrectionDate
 			}
 
 			return dateTimeOne.Before(dateTimeTwo)

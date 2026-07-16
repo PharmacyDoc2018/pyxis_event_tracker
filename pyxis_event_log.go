@@ -387,6 +387,10 @@ func (p *Process) loadPyxisEventlog(pyxis string) error {
 	for i := range p.PyxisEventLogs {
 		if p.PyxisEventLogs[i].PyxisName == pyxis {
 			if len(p.PyxisEventLogs[i].Log) == 0 {
+				err := p.PyxisEventLogs[i].ControlEventLog.Save(p)
+				if err != nil {
+					return fmt.Errorf("error saving controlEventLog before re-loading event log: %s", err.Error())
+				}
 				p.PyxisEventLogs = append(p.PyxisEventLogs[:i], p.PyxisEventLogs[i+1:]...)
 				break
 			} else {
