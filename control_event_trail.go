@@ -48,7 +48,7 @@ type ControlEventLog struct {
 func (c *ControlEventLog) Sort() {
 	for i := range c.Log {
 		for j := range c.Log[i].EventTrails {
-			sort.Slice(c.Log[i].EventTrails[j], func(a, b int) bool {
+			sort.Slice(c.Log[i].EventTrails[j].Trail, func(a, b int) bool {
 				dateTimeOne := time.Time{}
 				switch c.Log[i].EventTrails[j].Trail[a].Type {
 				case pyxisEvent:
