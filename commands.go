@@ -5,7 +5,9 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -39,6 +41,23 @@ func (p *Process) setupCommands() {
 		return nil
 	}, cli.CommandArg{
 		Name: "phrase",
+	})
+
+	p.cliConfig.AddCommand("clear", func(args []cli.CommandArg) error {
+		switch runtime.GOOS {
+		case "windows":
+			cmd := exec.Command("cmd", "/c", "cls")
+			cmd.Stdout = os.Stdout
+			cmd.Run()
+
+		default:
+			cmd := exec.Command("clear")
+			cmd.Stdout = os.Stdout
+			cmd.Run()
+		}
+
+		return nil
+
 	})
 
 	p.cliConfig.AddCommand("add pyxis", func(args []cli.CommandArg) error {
