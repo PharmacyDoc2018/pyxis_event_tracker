@@ -1082,6 +1082,73 @@ func (p *Process) setupCommands() {
 
 	})
 
+	p.cliConfig.AddCommand("remove selected item", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("remove selected item command executed")
+
+		id := ""
+		for _, arg := range args {
+			switch arg.Name {
+			case "id":
+				id = arg.Val
+			}
+		}
+
+		if id == "" {
+			p.logger.LogError("Command failed. id cannot be blank")
+			return fmt.Errorf("error. id cannot be blank")
+		}
+
+		found := false
+		itemToRemove := EventTrailItem{}
+		for item := range p.selectedEventActions.Map {
+			switch item.Type {
+			case pyxisEvent:
+				if item.PyxisEvent.ItemTransactionKey.String() == id {
+					found = true
+					itemToRemove = item
+				}
+
+			case marAction:
+				if item.MarAction.OrderNumber == id {
+					found = true
+					itemToRemove = item
+				}
+
+			case correctionEvent:
+				if item.CorrectionEvent.Id == id {
+					found = true
+					itemToRemove = item
+				}
+			}
+		}
+		if !found {
+			p.logger.LogError(fmt.Sprintf("Command failed. Id %s not found in selected items", id))
+			return fmt.Errorf("error. id %s not found in selected items", id)
+		}
+
+		delete(p.selectedEventActions.Map, itemToRemove)
+
+		switch itemToRemove.Type {
+		case pyxisEvent:
+			printfln("Pyxis event %s removed from selected items", itemToRemove.PyxisEvent.ItemTransactionKey.String())
+
+		case marAction:
+			printfln("MAR action taken on %s at %s with order number %s removed from selected items",
+				itemToRemove.MarAction.SavedTime.Format("2006-01-02"),
+				itemToRemove.MarAction.SavedTime.Format("1504"),
+				itemToRemove.MarAction.OrderNumber)
+
+		case correctionEvent:
+			printfln("Correction action %s removed from selected items", id)
+		}
+
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "id",
+		Required: true,
+	})
+
 	//----------------------- Manual Control Matching Commands ------------------------//
 
 	p.cliConfig.AddCommand("match selected event actions", func(args []cli.CommandArg) error {
