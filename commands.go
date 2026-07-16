@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"time"
 
@@ -1049,6 +1048,21 @@ func (p *Process) setupCommands() {
 		Required: true,
 	})
 
+	p.cliConfig.AddCommand("list selected items", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("list selected items command executed")
+
+		items := []EventTrailItem{}
+		for item := range p.selectedEventActions.Map {
+			items = append(items, item)
+		}
+
+		sortEventTrailItems(items)
+		printEventTrailItems(items)
+
+		return nil
+
+	})
+
 	//----------------------- Manual Control Matching Commands ------------------------//
 
 	p.cliConfig.AddCommand("match selected event actions", func(args []cli.CommandArg) error {
@@ -1091,33 +1105,7 @@ func (p *Process) setupCommands() {
 			return fmt.Errorf("error. no selected events")
 		}
 
-		sort.Slice(events, func(i, j int) bool {
-			dateTimeOne := time.Time{}
-			switch events[i].Type {
-			case pyxisEvent:
-				dateTimeOne = events[i].PyxisEvent.TxDateTime
-
-			case marAction:
-				dateTimeOne = events[i].MarAction.SavedTime
-
-			case correctionEvent:
-				dateTimeOne = events[i].CorrectionEvent.CorrectionDate
-			}
-
-			dateTimeTwo := time.Time{}
-			switch events[j].Type {
-			case pyxisEvent:
-				dateTimeTwo = events[j].PyxisEvent.TxDateTime
-
-			case marAction:
-				dateTimeTwo = events[j].MarAction.SavedTime
-
-			case correctionEvent:
-				dateTimeTwo = events[j].CorrectionEvent.CorrectionDate
-			}
-
-			return dateTimeOne.Before(dateTimeTwo)
-		})
+		sortEventTrailItems(events)
 
 		found = false
 		index := 0

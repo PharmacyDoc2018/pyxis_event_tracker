@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -129,4 +130,83 @@ func printfln(format string, a ...any) (n int, err error) {
 	b := a
 	n, err = fmt.Println(fmt.Sprintf(format, b...))
 	return n, err
+}
+
+func sortEventTrailItems(items []EventTrailItem) {
+	sort.Slice(items, func(i, j int) bool {
+		dateTimeOne := time.Time{}
+		switch items[i].Type {
+		case pyxisEvent:
+			dateTimeOne = items[i].PyxisEvent.TxDateTime
+
+		case marAction:
+			dateTimeOne = items[i].MarAction.SavedTime
+
+		case correctionEvent:
+			dateTimeOne = items[i].CorrectionEvent.CorrectionDate
+		}
+
+		dateTimeTwo := time.Time{}
+		switch items[j].Type {
+		case pyxisEvent:
+			dateTimeTwo = items[j].PyxisEvent.TxDateTime
+
+		case marAction:
+			dateTimeTwo = items[j].MarAction.SavedTime
+
+		case correctionEvent:
+			dateTimeTwo = items[j].CorrectionEvent.CorrectionDate
+		}
+
+		return dateTimeOne.Before(dateTimeTwo)
+	})
+}
+
+func printEventTrailItems(items []EventTrailItem) {
+	for _, item := range items {
+		switch item.Type {
+		case pyxisEvent:
+			printfln("Item Transaction Key: %s", item.PyxisEvent.ItemTransactionKey.String())
+			printfln("Transaction Type: %s", item.PyxisEvent.TransactionType)
+			printfln("Date Time: %s", item.PyxisEvent.TxDateTime.Format("2006-01-02 1504"))
+			printfln("User ID: %s", item.PyxisEvent.UserID)
+			printfln("User Name: %s", item.PyxisEvent.UserName)
+			printfln("Display Name: %s", item.PyxisEvent.MedDisplayName)
+			printfln("Amount: %s %s",
+				strconv.FormatFloat(item.PyxisEvent.AmountReferenced, 'f', -1, 64),
+				item.PyxisEvent.AmountReferencedUnits)
+			printfln("MAR: %s", item.PyxisEvent.MRN)
+			printfln("Witness: %s", item.PyxisEvent.WitnessName)
+			fmt.Println()
+
+		case marAction:
+			printfln("Order Number: %s", item.MarAction.OrderNumber)
+			printfln("MAR Action: %s", item.MarAction.MarAction)
+			printfln("Saved Time: %s", item.MarAction.SavedTime.Format("2006-01-02 1504"))
+			printfln("User ID: %s", item.MarAction.UserID)
+			printfln("User Name: %s", item.MarAction.UserName)
+			printfln("Display Name: %s", item.MarAction.DisplayName)
+			printfln("Dose: %s %s",
+				strconv.FormatFloat(item.MarAction.CalcMinDose, 'f', -1, 64),
+				item.MarAction.CalcDoseUnitDescription)
+			printfln("MAR: %s", item.MarAction.MRN)
+			printfln("Patient Name: %s", item.MarAction.PtName)
+			fmt.Println()
+
+		case correctionEvent:
+			printfln("ID: %s", item.CorrectionEvent.Id)
+			printfln("Event Date: %s", item.CorrectionEvent.EventDate.Format("2006-01-02"))
+			printfln("Correction Date: %s", item.CorrectionEvent.CorrectionDate.Format("2006-01-02 1504"))
+			printfln("User ID: %s", item.CorrectionEvent.UserID)
+			printfln("User Name: %s", item.CorrectionEvent.UserName)
+			printfln("Display Name: %s", item.CorrectionEvent.DisplayName)
+			printfln("Dose: %s %s",
+				strconv.FormatFloat(item.CorrectionEvent.Amount, 'f', -1, 64),
+				item.CorrectionEvent.Units)
+			printfln("ItemID: %s", item.CorrectionEvent.ItemId)
+			printfln("BeSafe: %s", item.CorrectionEvent.BeSafe)
+			fmt.Println()
+
+		}
+	}
 }

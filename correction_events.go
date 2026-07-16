@@ -39,6 +39,15 @@ type CorrectionEventLinks struct {
 	Map map[string]map[int]CorrectionEventLink
 }
 
+func (c *CorrectionEventLinks) WriteUpFile(id string) string {
+	idRunes := []rune(id)
+	dateID := string(idRunes[:8])
+	indexString := string(idRunes[9:])
+	index, _ := strconv.Atoi(indexString)
+	index--
+	return c.Map[dateID][index].WriteUpFile
+}
+
 func (c *CorrectionEventLinks) AddAndLink(p *Process, pyxisName string, mrn, itemID string, date time.Time, newCorrectionEvent CorrectionEvent) *logError {
 	dateID := timeStartDay(date).Format("20060102")
 	if _, okay := c.Map[dateID]; !okay {
