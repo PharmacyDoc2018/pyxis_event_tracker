@@ -1249,4 +1249,66 @@ func (p *Process) setupCommands() {
 		Name:     "pyxis",
 		Required: true,
 	})
+
+	p.cliConfig.AddCommand("match selected event actions with correction", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("match selected event actions with correction command executed")
+
+		pyxis := ""
+		for _, arg := range args {
+			switch arg.Name {
+			case "pyxis":
+				pyxis = arg.Val
+			}
+		}
+
+		if pyxis == "" {
+			p.logger.LogError("Command failed. pyxis cannot be blank")
+			return fmt.Errorf("error. pyxis cannot be blank")
+		}
+
+		newCorrectionEventScanner := bufio.NewScanner(os.Stdin)
+
+		prompts := []string{
+			"Event Date: ",
+			"Correction Date: ",
+			"User ID: ",
+			"User Name: ",
+			"Item ID: ",
+			"Display Name: ",
+			"Amount: ",
+			"Units: ",
+			"MRN: ",
+			"Patient Name: ",
+			"BeSafe: ",
+		}
+
+		inputs := []string{}
+
+		for i := 0; i < len(prompts); i++ {
+			fmt.Print(prompts[i])
+			newCorrectionEventScanner.Scan()
+			input := newCorrectionEventScanner.Text()
+			inputs = append(inputs, input)
+		}
+
+		eventDate, err := parseDate(inputs[0])
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
+			return err
+		}
+		eventDate = timeStartDay(eventDate)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
+			return err
+		}
+		eventDate = timeStartDay(eventDate)
+
+		correctionDate, err := parseDate(inputs[1])
+
+		p.correctionEventLinks.GetNewLink(p.pathToData)
+
+	}, cli.CommandArg{
+		Name:     "pyxis",
+		Required: true,
+	})
 }

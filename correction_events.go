@@ -48,13 +48,13 @@ func (c *CorrectionEventLinks) WriteUpFile(id string) string {
 	return c.Map[dateID][index].WriteUpFile
 }
 
-func (c *CorrectionEventLinks) AddAndLink(p *Process, pyxisName string, mrn, itemID string, date time.Time, newCorrectionEvent CorrectionEvent) *logError {
-	dateID := timeStartDay(date).Format("20060102")
+func (c *CorrectionEventLinks) GetNewLink(dataPath string, date time.Time) (dateID string, index int) {
+	dateID = timeStartDay(date).Format("20060102")
 	if _, okay := c.Map[dateID]; !okay {
 		c.Map[dateID] = map[int]CorrectionEventLink{}
 	}
 
-	index := 0
+	index = 0
 	_, okay := c.Map[dateID][index]
 	for okay {
 		index++
@@ -71,13 +71,16 @@ func (c *CorrectionEventLinks) AddAndLink(p *Process, pyxisName string, mrn, ite
 	id := dateID + indexName
 	fileName := fmt.Sprintf("%s.txt", id)
 
-	newCorrectionEvent.Id = id
-
 	link := CorrectionEventLink{
 		Id:          id,
-		WriteUpFile: filepath.Join(p.pathToData, CorrectionEventsDirName, CorrectionWriteUpsDirName, fileName),
+		WriteUpFile: filepath.Join(dataPath, CorrectionEventsDirName, CorrectionWriteUpsDirName, fileName),
 	}
 
+	c.Map[dateID][index] = link
+	return dateID, index
+}
+
+func (c *CorrectionEventLinks) AddAndLink(p *Process, pyxisName string, date time.Time, mrn, itemID, dateID string, index int, newCorrectionEvent CorrectionEvent) *logError {
 	logIndex := 0
 	found := false
 	for i := range p.PyxisEventLogs {
@@ -139,10 +142,13 @@ func (c *CorrectionEventLinks) AddAndLink(p *Process, pyxisName string, mrn, ite
 				delete(p.selectedEventActions.Map, item)
 			}
 		}
+
+		//-- Remove correction event link since link failed
+		delete(p.correctionEventLinks.Map[dateID], index)
+
 		return logErr
 	}
 
-	c.Map[dateID][index] = link
 	return nil
 
 }
