@@ -1269,17 +1269,17 @@ func (p *Process) setupCommands() {
 		newCorrectionEventScanner := bufio.NewScanner(os.Stdin)
 
 		prompts := []string{
-			"Event Date: ",
-			"Correction Date: ",
-			"User ID: ",
-			"User Name: ",
-			"Item ID: ",
-			"Display Name: ",
-			"Amount: ",
-			"Units: ",
-			"MRN: ",
-			"Patient Name: ",
-			"BeSafe: ",
+			"Event Date: ",      //-- 0
+			"Correction Date: ", //-- 1
+			"User ID: ",         //-- 2
+			"User Name: ",       //-- 3
+			"Item ID: ",         //-- 4
+			"Display Name: ",    //-- 5
+			"Amount: ",          //-- 6
+			"Units: ",           //-- 7
+			"MRN: ",             //-- 8
+			"Patient Name: ",    //-- 9
+			"BeSafe: ",          //-- 10
 		}
 
 		inputs := []string{}
@@ -1297,15 +1297,51 @@ func (p *Process) setupCommands() {
 			return err
 		}
 		eventDate = timeStartDay(eventDate)
+
+		correctionDate, err := parseDate(inputs[1])
 		if err != nil {
 			p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
 			return err
 		}
-		eventDate = timeStartDay(eventDate)
 
-		correctionDate, err := parseDate(inputs[1])
+		itemID := inputs[4]
+		_, err = p.itemIDs.DisplayName(itemID)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed: itemID %s not found", itemID))
+			return err
+		}
 
-		p.correctionEventLinks.GetNewLink(p.pathToData)
+		amount, err := strconv.ParseFloat(inputs[6], 64)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
+			return err
+		}
+
+		dateID, index := p.correctionEventLinks.GetNewLink(p.pathToData, correctionDate)
+		link := p.correctionEventLinks.Map[dateID][index]
+
+		newCorrectionEvent := CorrectionEvent{
+			Id:             link.Id,
+			EventDate:      eventDate,
+			CorrectionDate: correctionDate,
+			UserID:         inputs[2],
+			UserName:       inputs[3],
+			ItemId:         itemID,
+			DisplayName:    inputs[5],
+			Amount:         amount,
+			Units:          inputs[7],
+			MRN:            inputs[8],
+			PtName:         inputs[9],
+			BeSafe:         inputs[10],
+		}
+
+		logErr := p.correctionEventLinks.AddAndLink(p, pyxis, eventDate, inputs[8], itemID, dateID, index, newCorrectionEvent)
+		if logErr != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", logErr.logMessage))
+			return logErr
+		}
+
+		return nil
 
 	}, cli.CommandArg{
 		Name:     "pyxis",
