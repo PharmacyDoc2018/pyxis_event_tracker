@@ -1305,8 +1305,8 @@ func (p *Process) setupCommands() {
 		}
 
 		itemID := inputs[4]
-		_, err = p.itemIDs.DisplayName(itemID)
-		if err != nil {
+		_, logErr := p.itemIDs.DisplayName(itemID)
+		if logErr != nil {
 			p.logger.LogError(fmt.Sprintf("Command failed: itemID %s not found", itemID))
 			return err
 		}
@@ -1335,7 +1335,7 @@ func (p *Process) setupCommands() {
 			BeSafe:         inputs[10],
 		}
 
-		logErr := p.correctionEventLinks.AddAndLink(p, pyxis, eventDate, inputs[8], itemID, dateID, index, newCorrectionEvent)
+		logErr = p.correctionEventLinks.AddAndLink(p, pyxis, eventDate, inputs[8], itemID, dateID, index, newCorrectionEvent)
 		if logErr != nil {
 			p.logger.LogError(fmt.Sprintf("Command failed: %s", logErr.logMessage))
 			return logErr
