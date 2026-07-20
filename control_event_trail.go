@@ -556,6 +556,9 @@ func (c *ControlEventLog) LinkEventActions(mrn, itemID string, date time.Time, i
 
 		case marAction:
 			subtractFloat(NetAmount, item.MarAction.CalcMinDose)
+
+		case correctionEvent:
+			subtractFloat(NetAmount, item.CorrectionEvent.Amount)
 		}
 	}
 

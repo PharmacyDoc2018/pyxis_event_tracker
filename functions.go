@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os/exec"
+	"runtime"
 	"sort"
 	"strconv"
 	"time"
@@ -209,4 +211,24 @@ func printEventTrailItems(items []EventTrailItem) {
 
 		}
 	}
+}
+
+func openInDefaultEditor(filePath string) error {
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "windows":
+		// Windows: Launches the registered default app for .txt
+		cmd = exec.Command("cmd", "/c", "start", filePath)
+	case "darwin":
+		// macOS: Opens using the default utility
+		cmd = exec.Command("open", filePath)
+	case "linux":
+		// Linux: Opens using the desktop environment's default app
+		cmd = exec.Command("xdg-open", filePath)
+	default:
+		return fmt.Errorf("unsupported platform")
+	}
+
+	return cmd.Start() // Use .Start() so your Go app doesn't freeze while the GUI is open
 }

@@ -63,9 +63,9 @@ func (c *CorrectionEventLinks) GetNewLink(dataPath string, date time.Time) (date
 
 	indexName := ""
 	if index <= 9 {
-		indexName = "0" + strconv.Itoa(index)
+		indexName = "0" + strconv.Itoa(index+1)
 	} else {
-		indexName = strconv.Itoa(index)
+		indexName = strconv.Itoa(index + 1)
 	}
 
 	id := dateID + indexName
@@ -148,6 +148,18 @@ func (c *CorrectionEventLinks) AddAndLink(p *Process, pyxisName string, date tim
 
 		return logErr
 	}
+
+	link := p.correctionEventLinks.Map[dateID][index]
+	file, err := os.OpenFile(filepath.Join(link.WriteUpFile), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return &logError{
+			errMessage: err.Error(),
+			logMessage: fmt.Sprintf("Error creating write up file for new correction event: %s", err.Error()),
+		}
+	}
+
+	file.WriteString("Type your correction event write up here.")
+	file.Close()
 
 	return nil
 
