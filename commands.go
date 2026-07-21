@@ -830,12 +830,13 @@ func (p *Process) setupCommands() {
 		p.PyxisEventLogs[index].ControlEventLog.SortUnmatchedEvents()
 
 		for _, unmatchedEvent := range p.PyxisEventLogs[index].ControlEventLog.UnmatchedEvents {
-			fmt.Printf("Key: %s\nType: %s\nDateTime: %s\nUserID: %s\nUserName: %s\nDisplayName: %s\nAmount: %s\nMRN: %s\nWitness: %s\n",
+			fmt.Printf("Key: %s\nType: %s\nDateTime: %s\nItemID: %s\nUserName: %s (%s)\nDisplayName: %s\nAmount: %s\nMRN: %s\nWitness: %s\n",
 				unmatchedEvent.ItemTransactionKey.String(),
 				unmatchedEvent.TransactionType,
 				unmatchedEvent.TxDateTime.Format("2006-01-02 1504"),
-				unmatchedEvent.UserID,
+				unmatchedEvent.ItemID,
 				unmatchedEvent.UserName,
+				unmatchedEvent.UserID,
 				unmatchedEvent.MedDisplayName,
 				strconv.FormatFloat(unmatchedEvent.AmountReferenced, 'f', -1, 64)+" "+unmatchedEvent.AmountReferencedUnits,
 				unmatchedEvent.MRN,
