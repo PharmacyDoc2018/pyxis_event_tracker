@@ -833,7 +833,7 @@ func (p *Process) setupCommands() {
 			fmt.Printf("Key: %s\nType: %s\nDateTime: %s\nUserID: %s\nUserName: %s\nDisplayName: %s\nAmount: %s\nMRN: %s\nWitness: %s\n",
 				unmatchedEvent.ItemTransactionKey.String(),
 				unmatchedEvent.TransactionType,
-				unmatchedEvent.TxDateTime.Format("2006-01-02"),
+				unmatchedEvent.TxDateTime.Format("2006-01-02 1504"),
 				unmatchedEvent.UserID,
 				unmatchedEvent.UserName,
 				unmatchedEvent.MedDisplayName,
