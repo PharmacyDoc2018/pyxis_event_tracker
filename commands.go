@@ -1343,6 +1343,9 @@ func (p *Process) setupCommands() {
 				return err
 			}
 
+			//-- Remove selected event actions after successfully matching items
+			p.selectedEventActions.Map = map[EventTrailItem]struct{}{}
+
 			return nil
 
 		} else { //-- If no correction event to include
@@ -1423,7 +1426,9 @@ func (p *Process) setupCommands() {
 				return logErr
 			}
 
+			//-- Remove selected event actions after successfully matching items
 			p.selectedEventActions.Map = map[EventTrailItem]struct{}{}
+
 			p.logger.LogInfo(fmt.Sprintf("Selected events successfully linked and added to  %s control event log", pyxis))
 			printfln("selected events successfully linked and added to %s control event log", pyxis)
 
@@ -1437,104 +1442,6 @@ func (p *Process) setupCommands() {
 	}, cli.CommandArg{
 		Name:     "modifier",
 		Required: false,
-	})
-
-	p.cliConfig.AddCommand("match selected event actions with correction", func(args []cli.CommandArg) error {
-		p.logger.LogInfo("match selected event actions with correction command executed")
-
-		pyxis := ""
-		for _, arg := range args {
-			switch arg.Name {
-			case "pyxis":
-				pyxis = arg.Val
-			}
-		}
-
-		if pyxis == "" {
-			p.logger.LogError("Command failed. pyxis cannot be blank")
-			return fmt.Errorf("error. pyxis cannot be blank")
-		}
-
-		newCorrectionEventScanner := bufio.NewScanner(os.Stdin)
-
-		prompts := []string{
-			"Event Date: ",      //-- 0
-			"Correction Date: ", //-- 1
-			"User ID: ",         //-- 2
-			"User Name: ",       //-- 3
-			"Item ID: ",         //-- 4
-			"Display Name: ",    //-- 5
-			"Amount: ",          //-- 6
-			"Units: ",           //-- 7
-			"MRN: ",             //-- 8
-			"Patient Name: ",    //-- 9
-			"BeSafe: ",          //-- 10
-		}
-
-		inputs := []string{}
-
-		for i := 0; i < len(prompts); i++ {
-			fmt.Print(prompts[i])
-			newCorrectionEventScanner.Scan()
-			input := newCorrectionEventScanner.Text()
-			inputs = append(inputs, input)
-		}
-
-		eventDate, err := parseDate(inputs[0])
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
-			return err
-		}
-		eventDate = timeStartDay(eventDate)
-
-		correctionDate, err := parseDate(inputs[1])
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
-			return err
-		}
-
-		itemID := inputs[4]
-		_, logErr := p.itemIDs.DisplayName(itemID)
-		if logErr != nil {
-			p.logger.LogError(fmt.Sprintf("Command failed: itemID %s not found", itemID))
-			return err
-		}
-
-		amount, err := strconv.ParseFloat(inputs[6], 64)
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
-			return err
-		}
-
-		dateID, index := p.correctionEventLinks.GetNewLink(p.pathToData, correctionDate)
-		link := p.correctionEventLinks.Map[dateID][index]
-
-		newCorrectionEvent := CorrectionEvent{
-			Id:             link.Id,
-			EventDate:      eventDate,
-			CorrectionDate: correctionDate,
-			UserID:         inputs[2],
-			UserName:       inputs[3],
-			ItemId:         itemID,
-			DisplayName:    inputs[5],
-			Amount:         amount,
-			Units:          inputs[7],
-			MRN:            inputs[8],
-			PtName:         inputs[9],
-			BeSafe:         inputs[10],
-		}
-
-		logErr = p.correctionEventLinks.AddAndLink(p, pyxis, eventDate, inputs[8], itemID, dateID, index, newCorrectionEvent)
-		if logErr != nil {
-			p.logger.LogError(fmt.Sprintf("Command failed: %s", logErr.logMessage))
-			return logErr
-		}
-
-		return nil
-
-	}, cli.CommandArg{
-		Name:     "pyxis",
-		Required: true,
 	})
 
 }
