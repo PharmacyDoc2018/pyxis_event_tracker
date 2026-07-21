@@ -659,6 +659,18 @@ func (p *Process) setupCommands() {
 			WitPtName:       "Patient Name",
 		}
 
+		correctionRowNames := RowNames{
+			KeyName:         "Key",
+			TypeName:        "Write Up File",
+			DateTimeName:    "Correction Date",
+			UserIDName:      "User ID",
+			UserNameName:    "User Name",
+			DisplayNameName: "Display Name",
+			AmountName:      "Correction Amount",
+			MrnName:         "MRN",
+			WitPtName:       "Patient Name",
+		}
+
 		pyxis := ""
 		for _, arg := range args {
 			switch arg.Name {
@@ -729,6 +741,29 @@ func (p *Process) setupCommands() {
 								batch[7][(x*2)+1] = event.MarAction.MRN
 								batch[8][x*2] = actionRowNames.WitPtName
 								batch[8][(x*2)+1] = event.MarAction.PtName
+
+							case correctionEvent:
+								batch[0][x*2] = correctionRowNames.KeyName
+								batch[0][(x*2)+1] = event.CorrectionEvent.Id
+								batch[1][x*2] = correctionRowNames.TypeName
+								batch[1][(x*2)+1] = p.correctionEventLinks.WriteUpFile(event.CorrectionEvent.Id)
+								batch[2][x*2] = correctionRowNames.DateTimeName
+								batch[2][(x*2)+1] = event.CorrectionEvent.CorrectionDate.Format("2006-01-02")
+								batch[3][x*2] = correctionRowNames.UserIDName
+								batch[3][(x*2)+1] = event.CorrectionEvent.UserID
+								batch[4][x*2] = correctionRowNames.UserNameName
+								batch[4][(x*2)+1] = event.CorrectionEvent.UserName
+								batch[5][x*2] = correctionRowNames.DisplayNameName
+								batch[5][(x*2)+1] = event.CorrectionEvent.DisplayName
+								batch[6][x*2] = correctionRowNames.AmountName
+								batch[6][(x*2)+1] = fmt.Sprintf("%s %s",
+									strconv.FormatFloat(event.CorrectionEvent.Amount, 'f', -1, 64),
+									event.CorrectionEvent.Units)
+								batch[7][x*2] = correctionRowNames.MrnName
+								batch[7][(x*2)+1] = event.CorrectionEvent.MRN
+								batch[8][x*2] = correctionRowNames.WitPtName
+								batch[8][(x*2)+1] = event.CorrectionEvent.PtName
+
 							}
 						}
 						report = append(report, batch...)
