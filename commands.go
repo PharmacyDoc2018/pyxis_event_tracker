@@ -1149,6 +1149,95 @@ func (p *Process) setupCommands() {
 		Required: true,
 	})
 
+	p.cliConfig.AddCommand("break event trail and select", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("break event trail and select command executed")
+
+		startLen := len(p.selectedEventActions.Map)
+		pyxis := ""
+		id := ""
+
+		for _, arg := range args {
+			switch arg.Name {
+			case "pyxis":
+				pyxis = arg.Val
+
+			case "id":
+				id = arg.Val
+			}
+		}
+
+		if pyxis == "" {
+			p.logger.LogError("Command failed. pyxis cannot be blank")
+			return fmt.Errorf("error. pyxis cannot be blank")
+		}
+
+		if id == "" {
+			p.logger.LogError("Command failed. id cannot be blank")
+			return fmt.Errorf("error. id cannot be blank")
+		}
+
+		logIndex := 0
+		found := false
+		for i, log := range p.PyxisEventLogs {
+			if log.PyxisName == pyxis {
+				found = true
+				logIndex = i
+			}
+		}
+		if !found {
+			p.logger.LogError(fmt.Sprintf("Command failed. %s Pyxis not found", pyxis))
+			return fmt.Errorf("error. %s pyxis not found", pyxis)
+		}
+
+		found = false
+		for i := range p.PyxisEventLogs[logIndex].ControlEventLog.Log {
+			for j := range p.PyxisEventLogs[logIndex].ControlEventLog.Log[i].EventTrails {
+				for _, item := range p.PyxisEventLogs[logIndex].ControlEventLog.Log[i].EventTrails[j].Trail {
+					switch item.Type {
+					case pyxisEvent:
+						if item.PyxisEvent.ItemTransactionKey.String() == id {
+							found = true
+							logErr := p.selectedEventActions.RemoveTrailAndSelect(p.PyxisEventLogs[logIndex].ControlEventLog, &p.PyxisEventLogs[logIndex].ControlEventLog.Log[i], j)
+							if logErr != nil {
+								p.logger.LogError(fmt.Sprintf("Command failed: %s", logErr.logMessage))
+								return logErr
+							}
+						}
+
+					case marAction:
+						//
+					}
+					if found {
+						break
+					}
+				}
+				if found {
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+		if !found {
+			p.logger.LogError(fmt.Sprintf("Command failed: %s not found in %s control event log", id, pyxis))
+			return fmt.Errorf("error. %s not found in %s control event log", id, pyxis)
+		}
+
+		lenChange := len(p.selectedEventActions.Map) - startLen
+		p.logger.LogInfo(fmt.Sprintf("%d event actions added to selection", lenChange))
+		printfln("%d event actions added to selection", lenChange)
+
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "pyxis",
+		Required: true,
+	}, cli.CommandArg{
+		Name:     "id",
+		Required: true,
+	})
+
 	//----------------------- Manual Control Matching Commands ------------------------//
 
 	p.cliConfig.AddCommand("match selected event actions", func(args []cli.CommandArg) error {
@@ -1447,4 +1536,5 @@ func (p *Process) setupCommands() {
 		Name:     "pyxis",
 		Required: true,
 	})
+
 }

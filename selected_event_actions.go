@@ -11,7 +11,7 @@ type SelectedEventActions struct {
 	Map map[EventTrailItem]struct{}
 }
 
-func (s *SelectedEventActions) RemoveTrailAndSelect(controlEventTrail *ControlEventTrail, index int) *logError {
+func (s *SelectedEventActions) RemoveTrailAndSelect(controlEventLog *ControlEventLog, controlEventTrail *ControlEventTrail, index int) *logError {
 	//-- Check index is valid
 	if index >= len(controlEventTrail.EventTrails) {
 		return &logError{
@@ -38,9 +38,13 @@ func (s *SelectedEventActions) RemoveTrailAndSelect(controlEventTrail *ControlEv
 		}
 	}
 
-	//-- Add EventTrailItems to the selected map
+	//-- Add EventTrailItems to the selected map and Pyxis events to unmatched events
 	for _, item := range controlEventTrail.EventTrails[index].Trail {
 		s.Map[item] = struct{}{}
+
+		if item.Type == pyxisEvent {
+			controlEventLog.UnmatchedEvents = append(controlEventLog.UnmatchedEvents, item.PyxisEvent)
+		}
 	}
 
 	//-- Remove the EventTrail containing selected events from the controlEventTrail
