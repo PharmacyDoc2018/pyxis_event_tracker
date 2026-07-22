@@ -402,7 +402,8 @@ func (c *ControlEventLog) MatchEvents(pyxisEvents []PyxisEvent, marActions []Mar
 						unmatchedEvents = append(unmatchedEvents, event.PyxisEvent)
 					}
 				}
-				return unmatchedEvents
+				matchStatus.Done = true
+				break
 			}
 
 			//-- Check for trail end:
