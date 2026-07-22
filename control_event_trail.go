@@ -394,6 +394,17 @@ func (c *ControlEventLog) MatchEvents(pyxisEvents []PyxisEvent, marActions []Mar
 				//----------------------------------------------------------------//
 			}
 
+			//-- Check for negative amount. Return remaining events as unmatched events
+			if matchStatus.CurrentAmount < 0.0 {
+				unmatchedEvents := []PyxisEvent{}
+				for _, event := range allEvents {
+					if event.Type == pyxisEvent {
+						unmatchedEvents = append(unmatchedEvents, event.PyxisEvent)
+					}
+				}
+				return unmatchedEvents
+			}
+
 			//-- Check for trail end:
 			//-- If current amount = 0 and there is at least one remove event -> end trail
 			if matchStatus.CurrentAmount == 0.0 && matchStatus.InitialRemoveAmount > 0.0 {
@@ -480,7 +491,35 @@ func (c *ControlEventLog) MatchEvents(pyxisEvents []PyxisEvent, marActions []Mar
 
 	}
 	if len(controlEventTrail.EventTrails) > 0 {
-		c.Log = append(c.Log, controlEventTrail)
+		type compareStruct struct {
+			MRN    string
+			ItemID string
+			Date   time.Time
+		}
+
+		found := false
+		for i, cet := range c.Log {
+			newCetComp := compareStruct{
+				MRN:    controlEventTrail.MRN,
+				ItemID: controlEventTrail.ItemID,
+				Date:   controlEventTrail.Date,
+			}
+
+			cetComp := compareStruct{
+				MRN:    cet.MRN,
+				ItemID: cet.ItemID,
+				Date:   cet.Date,
+			}
+
+			if newCetComp == cetComp {
+				found = true
+				c.Log[i].EventTrails = append(c.Log[i].EventTrails, controlEventTrail.EventTrails...)
+				break
+			}
+		}
+		if !found {
+			c.Log = append(c.Log, controlEventTrail)
+		}
 	}
 	unmatchedEvents := []PyxisEvent{}
 	for _, event := range allEvents {
