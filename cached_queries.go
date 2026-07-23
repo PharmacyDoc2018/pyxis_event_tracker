@@ -139,3 +139,39 @@ func getMarActionsByOrderNumber(p *Process, orderNumber string) ([]database.MarA
 
 	return actions, nil
 }
+
+func getPyxisEventById(p *Process, id string) (database.PyxisEventResponse, error) {
+	key := "GetPyxisEventByItemTransactionKey"
+	key += id
+
+	p.logger.LogInfo(fmt.Sprintf("Query started. Getting Pyxis event %s", id))
+
+	data, okay := p.cache.Get(key)
+	if okay {
+		p.logger.LogInfo("Query results found in cache")
+		event := database.PyxisEventResponse{}
+		err := json.Unmarshal(data, &event)
+		if err != nil {
+			return database.PyxisEventResponse{}, err
+		}
+		return event, nil
+	}
+
+	p.logger.LogInfo("Query results not found in cache. Querying database")
+	event, err := p.dbq.GetPyxisEventByItemTransactionKey(context.Background(), id)
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Error executing SQL query: %s", err.Error()))
+		return database.PyxisEventResponse{}, err
+	}
+
+	p.logger.LogInfo("Query successful. Adding to cache")
+	data, err = json.Marshal(&event)
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Error marshalling Pyxis event: %s", err.Error()))
+		return database.PyxisEventResponse{}, err
+	}
+	p.cache.Add(key, data)
+
+	return event, nil
+
+}

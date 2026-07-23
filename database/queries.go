@@ -187,6 +187,104 @@ func (q *Queries) GetPyxisEventsForDeviceByDateRange(ctx context.Context, arg Ge
 
 }
 
+const getPyxisEventByItemTransactionKey = `
+SELECT
+	t.ItemTransactionKey,
+	u.FullName AS UserName,
+	u.UserID,
+	space.StorageSpaceShortName AS StorageSpace,
+	i.ItemID,
+	i.MedClassCode,
+	i.MedDisplayName,
+	tc.TransactionType,
+	t.TransactionLocalDateTime,
+	t.EnteredQuantity,
+	t.EnteredUOMDisplayCode,
+	CAST(
+		CASE
+			WHEN t.EnteredUOMDisplayCode IS NULL
+				THEN NULL
+			WHEN t.EnteredUOMDisplayCode = 'Dosage Form'
+				THEN t.EnteredQuantity * i.StrengthAmount
+			WHEN t.EnteredUOMDisplayCode = i.VolumeUnit_DisplayCode
+				THEN (t.EnteredQuantity * i.StrengthAmount) / i.TotalVolumeAmount
+			ELSE
+				t.EnteredQuantity
+		END
+		AS numeric(18,4)
+	) AS AmountReferenced,
+	i.StrengthUnit_DisplayCode AS AmountReferencedUnits,
+	t.BegInventory,
+	t.EndInventory,
+	w.FullName AS WitnessName,
+	w.UserID AS WitnessID,
+	p.PatientID AS MRN
+FROM PYX.fctItemTransaction t
+INNER JOIN PYX.dimDispensingDevice d
+	ON t.UserAtDispensingDeviceKey = d.DispensingDeviceKey
+INNER JOIN PYX.dimItem i
+	ON t.ItemKey = i.ItemKey
+INNER JOIN dbo.dimTime time
+	ON t.Tx_TimeKey = time.DimTime_key
+LEFT JOIN PYX.fctItemEncounters e
+	ON t.EncounterKey = e.EncounterKey
+INNER JOIN PYX.dimUserAccount u
+	ON t.UserAccountKey = u.UserAccountKey
+INNER JOIN PYX.dimUserAccount w
+	ON t.WitnessAccountKey = w.UserAccountKey
+INNER JOIN PYX.dimTransactionCharacteristics tc
+	ON t.sk_dim_TxChar = tc.sk_dim_TxChar
+LEFT JOIN PYX.fctPatient p
+	ON e.PatientKey = p.PatientKey
+LEFT JOIN PYX.dimStorageSpace space
+	ON t.StorageSpaceKey = space.StorageSpaceKey
+WHERE t.ItemTransactionKey = @id;
+`
+
+func (q *Queries) GetPyxisEventByItemTransactionKey(ctx context.Context, id string) (PyxisEventResponse, error) {
+	row, err := q.db.QueryContext(ctx, getPyxisEventByItemTransactionKey, sql.Named("id", id))
+	if err != nil {
+		return PyxisEventResponse{}, err
+	}
+	defer row.Close()
+
+	var item PyxisEventResponse
+	if !row.Next() {
+		return PyxisEventResponse{}, fmt.Errorf("no result found")
+	}
+	if err := row.Scan(
+		&item.ItemTransactionKey,
+		&item.UserName,
+		&item.UserID,
+		&item.StorageSpace,
+		&item.ItemID,
+		&item.MedClassCode,
+		&item.MedDisplayName,
+		&item.TransactionType,
+		&item.TxDateTime,
+		&item.EnteredQuantity,
+		&item.EnteredUOMDisplayCode,
+		&item.AmountReferenced,
+		&item.AmountReferencedUnits,
+		&item.BegInventory,
+		&item.EndInventory,
+		&item.WitnessName,
+		&item.WitnessID,
+		&item.MRN,
+	); err != nil {
+		return PyxisEventResponse{}, err
+	}
+
+	if err := row.Close(); err != nil {
+		return PyxisEventResponse{}, err
+	}
+	if err := row.Err(); err != nil {
+		return PyxisEventResponse{}, err
+	}
+	return item, nil
+
+}
+
 type MarActionResponse struct {
 	SavedTime               sql.NullTime
 	OrderMedId              int
