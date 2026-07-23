@@ -441,8 +441,8 @@ func initProcess() *Process {
 	return &p
 }
 
-func (p *Process) exit() {
-	p.logger.LogInfo("Closing Application...")
+func (p *Process) save() {
+	p.logger.LogInfo("Saving data...")
 
 	if p.state.PyxisEventLogsLoadedOkay() {
 		err := p.saveAndUnloadPyxisEventLogs()
@@ -503,6 +503,14 @@ func (p *Process) exit() {
 	} else {
 		p.logger.LogInfo("Correction event links not being saved due to previous load error")
 	}
+
+	p.logger.LogInfo("Save complete")
+}
+
+func (p *Process) exit() {
+	p.save()
+
+	p.logger.LogInfo("Closing Application...")
 
 	p.cliConfig.Rl.Close()
 	close(p.cacheStop)
