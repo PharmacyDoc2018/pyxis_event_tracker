@@ -60,6 +60,14 @@ func (p *Process) setupCommands() {
 
 	})
 
+	p.cliConfig.AddCommand("save", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("save command executed")
+		fmt.Println("saving data...")
+		p.save()
+		fmt.Println("save complete")
+		return nil
+	})
+
 	p.cliConfig.AddCommand("add pyxis", func(args []cli.CommandArg) error {
 		p.logger.LogInfo("Add pyxis command executed")
 		pyxisName := ""
