@@ -934,6 +934,11 @@ func (p *Process) setupCommands() {
 	p.cliConfig.AddCommand("select mar action", func(args []cli.CommandArg) error {
 		p.logger.LogInfo("select mar action command executed")
 
+		if !p.state.DbConnectionOkay() {
+			p.logger.LogError("Command failed. Database connection required for this command")
+			return fmt.Errorf("error. database connection required for this command")
+		}
+
 		orderNumber := ""
 		for _, arg := range args {
 			switch arg.Name {
@@ -1106,6 +1111,56 @@ func (p *Process) setupCommands() {
 	}, cli.CommandArg{
 		Name:     "pyxis",
 		Required: true,
+	}, cli.CommandArg{
+		Name:     "id",
+		Required: true,
+	})
+
+	p.cliConfig.AddCommand("get and select pyxis event", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("get and select pyxis event command executed")
+
+		if !p.state.DbConnectionOkay() {
+			p.logger.LogError("Command failed. Database connection required for this command")
+			return fmt.Errorf("error. database connection required for this command")
+		}
+
+		id := ""
+		for _, arg := range args {
+			switch arg.Name {
+			case "id":
+				id = arg.Val
+			}
+		}
+
+		if id == "" {
+			p.logger.LogError("Command failed. id cannot be blank")
+			return fmt.Errorf("error. id cannot be blank")
+		}
+
+		eventResponse, err := getPyxisEventById(p, id)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", err.Error()))
+			return err
+		}
+
+		event := ParseEvent(eventResponse)
+
+		item := EventTrailItem{
+			Type:       pyxisEvent,
+			PyxisEvent: event,
+		}
+
+		logErr := p.selectedEventActions.Add(item)
+		if logErr != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed: %s", logErr.logMessage))
+			return logErr
+		}
+
+		p.logger.LogInfo(fmt.Sprintf("Pyxis event %s added to selection", id))
+		printfln("pyxis event %s added to selection")
+
+		return nil
+
 	}, cli.CommandArg{
 		Name:     "id",
 		Required: true,

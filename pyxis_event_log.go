@@ -113,121 +113,126 @@ func (p *PyxisEventLog) lastEventDateString() string {
 	return p.LastEventDateTime.Format("2006-01-02 15:04")
 }
 
+func ParseEvent(event database.PyxisEventResponse) PyxisEvent {
+	pyxisEvent := PyxisEvent{}
+	b, _ := event.ItemTransactionKey.MarshalBinary()
+	pyxisEvent.ItemTransactionKey = uuid.UUID{
+		b[3], b[2], b[1], b[0],
+		b[5], b[4],
+		b[7], b[6],
+		b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15],
+	}
+
+	if event.UserName.Valid {
+		pyxisEvent.UserName = event.UserName.String
+	} else {
+		pyxisEvent.UserName = ""
+	}
+
+	if event.UserID.Valid {
+		pyxisEvent.UserID = event.UserID.String
+	} else {
+		pyxisEvent.UserID = ""
+	}
+
+	if event.StorageSpace.Valid {
+		pyxisEvent.StorageSpace = event.StorageSpace.String
+	} else {
+		pyxisEvent.StorageSpace = ""
+	}
+
+	if event.ItemID.Valid {
+		pyxisEvent.ItemID = event.ItemID.String
+	} else {
+		pyxisEvent.ItemID = ""
+	}
+
+	if event.MedClassCode.Valid {
+		pyxisEvent.MedClassCode = event.MedClassCode.String
+	} else {
+		pyxisEvent.MedClassCode = ""
+	}
+
+	if event.MedDisplayName.Valid {
+		pyxisEvent.MedDisplayName = event.MedDisplayName.String
+	} else {
+		pyxisEvent.MedDisplayName = ""
+	}
+
+	if event.TransactionType.Valid {
+		pyxisEvent.TransactionType = event.TransactionType.String
+	} else {
+		pyxisEvent.TransactionType = ""
+	}
+
+	if event.TxDateTime.Valid {
+		pyxisEvent.TxDateTime = event.TxDateTime.Time
+	} else {
+		pyxisEvent.TxDateTime = time.Time{}
+	}
+
+	if event.EnteredQuantity.Valid {
+		pyxisEvent.EnteredQuantity = event.EnteredQuantity.Float64
+	} else {
+		pyxisEvent.EnteredQuantity = 0.0000
+	}
+
+	if event.EnteredUOMDisplayCode.Valid {
+		pyxisEvent.EnteredUOMDisplayCode = event.EnteredUOMDisplayCode.String
+	} else {
+		pyxisEvent.EnteredUOMDisplayCode = ""
+	}
+
+	if event.AmountReferenced.Valid {
+		pyxisEvent.AmountReferenced = event.AmountReferenced.Float64
+	} else {
+		pyxisEvent.AmountReferenced = 0.0000
+	}
+
+	if event.AmountReferencedUnits.Valid {
+		pyxisEvent.AmountReferencedUnits = event.AmountReferencedUnits.String
+	} else {
+		pyxisEvent.AmountReferencedUnits = ""
+	}
+
+	if event.BegInventory.Valid {
+		pyxisEvent.BegInventory = event.BegInventory.Float64
+	} else {
+		pyxisEvent.BegInventory = 0.0000
+	}
+
+	if event.EndInventory.Valid {
+		pyxisEvent.EndInventory = event.EndInventory.Float64
+	} else {
+		pyxisEvent.EndInventory = 0.0000
+	}
+
+	if event.WitnessName.Valid {
+		pyxisEvent.WitnessName = event.WitnessName.String
+	} else {
+		pyxisEvent.WitnessName = ""
+	}
+
+	if event.WitnessID.Valid {
+		pyxisEvent.WitnessID = event.WitnessID.String
+	} else {
+		pyxisEvent.WitnessID = ""
+	}
+
+	if event.MRN.Valid {
+		pyxisEvent.MRN = event.MRN.String
+	} else {
+		pyxisEvent.MRN = ""
+	}
+
+	return pyxisEvent
+}
+
 func (p *PyxisEventLog) ParseEventsAndAdd(events []database.PyxisEventResponse) *logResponder {
 	parsedEvents := []PyxisEvent{}
 
 	for _, event := range events {
-		pyxisEvent := PyxisEvent{}
-		b, _ := event.ItemTransactionKey.MarshalBinary()
-		pyxisEvent.ItemTransactionKey = uuid.UUID{
-			b[3], b[2], b[1], b[0],
-			b[5], b[4],
-			b[7], b[6],
-			b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15],
-		}
-
-		if event.UserName.Valid {
-			pyxisEvent.UserName = event.UserName.String
-		} else {
-			pyxisEvent.UserName = ""
-		}
-
-		if event.UserID.Valid {
-			pyxisEvent.UserID = event.UserID.String
-		} else {
-			pyxisEvent.UserID = ""
-		}
-
-		if event.StorageSpace.Valid {
-			pyxisEvent.StorageSpace = event.StorageSpace.String
-		} else {
-			pyxisEvent.StorageSpace = ""
-		}
-
-		if event.ItemID.Valid {
-			pyxisEvent.ItemID = event.ItemID.String
-		} else {
-			pyxisEvent.ItemID = ""
-		}
-
-		if event.MedClassCode.Valid {
-			pyxisEvent.MedClassCode = event.MedClassCode.String
-		} else {
-			pyxisEvent.MedClassCode = ""
-		}
-
-		if event.MedDisplayName.Valid {
-			pyxisEvent.MedDisplayName = event.MedDisplayName.String
-		} else {
-			pyxisEvent.MedDisplayName = ""
-		}
-
-		if event.TransactionType.Valid {
-			pyxisEvent.TransactionType = event.TransactionType.String
-		} else {
-			pyxisEvent.TransactionType = ""
-		}
-
-		if event.TxDateTime.Valid {
-			pyxisEvent.TxDateTime = event.TxDateTime.Time
-		} else {
-			pyxisEvent.TxDateTime = time.Time{}
-		}
-
-		if event.EnteredQuantity.Valid {
-			pyxisEvent.EnteredQuantity = event.EnteredQuantity.Float64
-		} else {
-			pyxisEvent.EnteredQuantity = 0.0000
-		}
-
-		if event.EnteredUOMDisplayCode.Valid {
-			pyxisEvent.EnteredUOMDisplayCode = event.EnteredUOMDisplayCode.String
-		} else {
-			pyxisEvent.EnteredUOMDisplayCode = ""
-		}
-
-		if event.AmountReferenced.Valid {
-			pyxisEvent.AmountReferenced = event.AmountReferenced.Float64
-		} else {
-			pyxisEvent.AmountReferenced = 0.0000
-		}
-
-		if event.AmountReferencedUnits.Valid {
-			pyxisEvent.AmountReferencedUnits = event.AmountReferencedUnits.String
-		} else {
-			pyxisEvent.AmountReferencedUnits = ""
-		}
-
-		if event.BegInventory.Valid {
-			pyxisEvent.BegInventory = event.BegInventory.Float64
-		} else {
-			pyxisEvent.BegInventory = 0.0000
-		}
-
-		if event.EndInventory.Valid {
-			pyxisEvent.EndInventory = event.EndInventory.Float64
-		} else {
-			pyxisEvent.EndInventory = 0.0000
-		}
-
-		if event.WitnessName.Valid {
-			pyxisEvent.WitnessName = event.WitnessName.String
-		} else {
-			pyxisEvent.WitnessName = ""
-		}
-
-		if event.WitnessID.Valid {
-			pyxisEvent.WitnessID = event.WitnessID.String
-		} else {
-			pyxisEvent.WitnessID = ""
-		}
-
-		if event.MRN.Valid {
-			pyxisEvent.MRN = event.MRN.String
-		} else {
-			pyxisEvent.MRN = ""
-		}
-
+		pyxisEvent := ParseEvent(event)
 		parsedEvents = append(parsedEvents, pyxisEvent)
 	}
 
