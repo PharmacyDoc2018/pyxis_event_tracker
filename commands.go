@@ -1157,7 +1157,7 @@ func (p *Process) setupCommands() {
 		}
 
 		p.logger.LogInfo(fmt.Sprintf("Pyxis event %s added to selection", id))
-		printfln("pyxis event %s added to selection")
+		printfln("pyxis event %s added to selection", id)
 
 		return nil
 
