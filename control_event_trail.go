@@ -567,21 +567,11 @@ func (c *ControlEventLog) LinkEventActions(mrn, itemID string, date time.Time, i
 		switch item.Type {
 		case pyxisEvent:
 			//-- Check to make sure event is listed in the UnmatchedEvents
-			found := false
 			for i, unmatchedEvent := range c.UnmatchedEvents {
 				if item.PyxisEvent.ItemTransactionKey == unmatchedEvent.ItemTransactionKey {
-					found = true
 					tempUnmatchedEvents = append(tempUnmatchedEvents, item.PyxisEvent)
 					c.UnmatchedEvents = append(c.UnmatchedEvents[:i], c.UnmatchedEvents[i+1:]...)
 					break
-				}
-			}
-			if !found {
-				c.UnmatchedEvents = append(c.UnmatchedEvents, tempUnmatchedEvents...)
-				c.SortUnmatchedEvents()
-				return &logError{
-					errMessage: (fmt.Sprintf("error. pyxis event %s not found in unmatched events", item.PyxisEvent.ItemTransactionKey.String())),
-					logMessage: (fmt.Sprintf("Error. Pyxis event %s not found in unmatched events", item.PyxisEvent.ItemTransactionKey.String())),
 				}
 			}
 
