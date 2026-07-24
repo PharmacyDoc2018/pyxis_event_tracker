@@ -587,10 +587,10 @@ func (c *ControlEventLog) LinkEventActions(mrn, itemID string, date time.Time, i
 
 			//-- Add to net amount for zero check
 			switch item.PyxisEvent.TransactionType {
-			case "Remove":
+			case "Remove", "Destock", "Empty return bin", "Outdate", "Unload":
 				addFloat(NetAmount, item.PyxisEvent.AmountReferenced)
 
-			case "Waste", "IntWaste":
+			case "Waste", "IntWaste", "Refill", "Load", "Return to bin", "Return to stock":
 				subtractFloat(NetAmount, item.PyxisEvent.AmountReferenced)
 			}
 
