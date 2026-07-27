@@ -295,6 +295,9 @@ type MarActionResponse struct {
 	Name                    sql.NullString
 	CalcDoseUnitDescription sql.NullString
 	CalcMinDose             sql.NullFloat64
+	DispQty                 sql.NullFloat64
+	DispQtyUnitName         sql.NullString
+	Strength                sql.NullString
 	PatMRN                  sql.NullString
 	PatName                 sql.NullString
 }
@@ -349,11 +352,19 @@ SELECT
 	u.NAME,
 	o.CalcDoseUnitDescription,
 	o.CALC_MIN_DOSE,
+	mam.DISP_QTY,
+	mu.NAME,
+	med.STRENGTH,
 	pat.PAT_MRN_ID,
 	pat.PAT_NAME
 FROM dbo.fctMARActions ma
 INNER JOIN dbo.dimMARCharacteristics mc
 	ON ma.sk_dim_MARChar = mc.sk_dim_MARChar
+INNER JOIN dbo.fctMARActionMedications mam
+	ON ma.ORDER_MED_ID = mam.ORDER_MED_ID
+	AND ma.LINE = mam.MAR_LINE
+INNER JOIN dbo.dimMedUnit mu
+	ON mam.DISP_QTYUNIT_C = mu.DISP_QTYUNIT_C
 INNER JOIN dbo.fctORDER_MED o
 	ON ma.ORDER_MED_ID = o.ORDER_MED_ID
 INNER JOIN dbo.dimUsers u
@@ -392,6 +403,9 @@ ORDER BY ma.SAVED_TIME;
 			&i.Name,
 			&i.CalcDoseUnitDescription,
 			&i.CalcMinDose,
+			&i.DispQty,
+			&i.DispQtyUnitName,
+			&i.Strength,
 			&i.PatMRN,
 			&i.PatName,
 		); err != nil {
@@ -472,11 +486,19 @@ SELECT
 	u.NAME,
 	o.CalcDoseUnitDescription,
 	o.CALC_MIN_DOSE,
+	mam.DISP_QTY,
+	mu.NAME,
+	med.STRENGTH,
 	pat.PAT_MRN_ID,
 	pat.PAT_NAME
 FROM dbo.fctMARActions ma
 INNER JOIN dbo.dimMARCharacteristics mc
 	ON ma.sk_dim_MARChar = mc.sk_dim_MARChar
+INNER JOIN dbo.fctMARActionMedications mam
+	ON ma.ORDER_MED_ID = mam.ORDER_MED_ID
+	AND ma.LINE = mam.MAR_LINE
+INNER JOIN dbo.dimMedUnit mu
+	ON mam.DISP_QTYUNIT_C = mu.DISP_QTYUNIT_C
 INNER JOIN dbo.fctORDER_MED o
 	ON ma.ORDER_MED_ID = o.ORDER_MED_ID
 INNER JOIN dbo.dimUsers u
@@ -516,6 +538,9 @@ ORDER BY ma.SAVED_TIME;
 			&i.Name,
 			&i.CalcDoseUnitDescription,
 			&i.CalcMinDose,
+			&i.DispQty,
+			&i.DispQtyUnitName,
+			&i.Strength,
 			&i.PatMRN,
 			&i.PatName,
 		); err != nil {
@@ -545,11 +570,19 @@ SELECT
 	u.NAME,
 	o.CalcDoseUnitDescription,
 	o.CALC_MIN_DOSE,
+	mam.DISP_QTY,
+	mu.NAME,
+	med.STRENGTH,
 	pat.PAT_MRN_ID,
 	pat.PAT_NAME
 FROM dbo.fctMARActions ma
 INNER JOIN dbo.dimMARCharacteristics mc
 	ON ma.sk_dim_MARChar = mc.sk_dim_MARChar
+INNER JOIN dbo.fctMARActionMedications mam
+	ON ma.ORDER_MED_ID = mam.ORDER_MED_ID
+	AND ma.LINE = mam.MAR_LINE
+INNER JOIN dbo.dimMedUnit mu
+	ON mam.DISP_QTYUNIT_C = mu.DISP_QTYUNIT_C
 INNER JOIN dbo.fctORDER_MED o
 	ON ma.ORDER_MED_ID = o.ORDER_MED_ID
 INNER JOIN dbo.dimUsers u
@@ -584,6 +617,9 @@ func (q *Queries) GetMarActionsByOrderNumber(ctx context.Context, orderNumber st
 			&i.Name,
 			&i.CalcDoseUnitDescription,
 			&i.CalcMinDose,
+			&i.DispQty,
+			&i.DispQtyUnitName,
+			&i.Strength,
 			&i.PatMRN,
 			&i.PatName,
 		); err != nil {

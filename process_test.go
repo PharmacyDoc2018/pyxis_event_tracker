@@ -430,7 +430,7 @@ func TestParseDose(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result, err := database.ParseDose(test.dispQty, test.unitName, test.strength)
+		result, err := parseDose(test.dispQty, test.unitName, test.strength)
 		if err != nil {
 			t.Errorf("%s", err.Error())
 		}

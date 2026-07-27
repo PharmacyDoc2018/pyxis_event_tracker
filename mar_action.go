@@ -9,17 +9,17 @@ import (
 )
 
 type MarAction struct {
-	SavedTime               time.Time //-- SAVED_TIME
-	OrderNumber             string    //-- ORDER_MED_ID - convert to string
-	MarAction               string    //-- FilteredMARAction
-	DisplayName             string    //--DISPLAY_NAME
-	MedicationID            string    //-- MEDICATION_ID convert to string
-	UserID                  string    //--SYSTEM_LOGIN
-	UserName                string    //-- NAME
-	CalcDoseUnitDescription string    //-- CalcDoseUnitDescription
-	CalcMinDose             float64   //-- CALC_MIN_DOSE
-	MRN                     string    //-- PAT_MRN_ID
-	PtName                  string    //-- PAT_NAME
+	SavedTime           time.Time //-- SAVED_TIME
+	OrderNumber         string    //-- ORDER_MED_ID - convert to string
+	MarAction           string    //-- FilteredMARAction
+	DisplayName         string    //--DISPLAY_NAME
+	MedicationID        string    //-- MEDICATION_ID convert to string
+	UserID              string    //--SYSTEM_LOGIN
+	UserName            string    //-- NAME
+	DoseUnitDescription string    //-- CalcDoseUnitDescription
+	Dose                float64   //-- CALC_MIN_DOSE
+	MRN                 string    //-- PAT_MRN_ID
+	PtName              string    //-- PAT_NAME
 }
 
 func (p *Process) parseMarActions(response []database.MarActionResponse) []MarAction {
@@ -68,15 +68,19 @@ func (p *Process) parseMarActions(response []database.MarActionResponse) []MarAc
 
 		if action.CalcDoseUnitDescription.Valid {
 			splitDescription := strings.Split(action.CalcDoseUnitDescription.String, " ")
-			marAction.CalcDoseUnitDescription = splitDescription[len(splitDescription)-1]
+			marAction.DoseUnitDescription = splitDescription[len(splitDescription)-1]
 		} else {
-			marAction.CalcDoseUnitDescription = ""
+			marAction.DoseUnitDescription = ""
 		}
 
 		if action.CalcMinDose.Valid {
-			marAction.CalcMinDose = action.CalcMinDose.Float64
+			if action.DispQty.Valid && action.DispQtyUnitName.Valid && action.Strength.Valid {
+				marAction.Dose, _ = parseDose(action.DispQty.Float64, action.DispQtyUnitName.String, action.Strength.String)
+			} else {
+				marAction.Dose = action.CalcMinDose.Float64
+			}
 		} else {
-			marAction.CalcMinDose = 0.0
+			marAction.Dose = 0.0
 		}
 
 		if action.PatMRN.Valid {

@@ -743,8 +743,8 @@ func (p *Process) setupCommands() {
 								batch[5][(x*2)+1] = event.MarAction.DisplayName
 								batch[6][x*2] = actionRowNames.AmountName
 								batch[6][(x*2)+1] = fmt.Sprintf("%s %s",
-									strconv.FormatFloat(event.MarAction.CalcMinDose, 'f', -1, 64),
-									event.MarAction.CalcDoseUnitDescription)
+									strconv.FormatFloat(event.MarAction.Dose, 'f', -1, 64),
+									event.MarAction.DoseUnitDescription)
 								batch[7][x*2] = actionRowNames.MrnName
 								batch[7][(x*2)+1] = event.MarAction.MRN
 								batch[8][x*2] = actionRowNames.WitPtName
@@ -985,7 +985,7 @@ func (p *Process) setupCommands() {
 				printfln("%d. MAR Action: %s", i+1, action.MarAction)
 				printfln("   Date Time: %s", action.SavedTime.Format("2006-01-02 1504"))
 				printfln("   Display Name: %s", action.DisplayName)
-				printfln("   Dose: %s %s", strconv.FormatFloat(action.CalcMinDose, 'f', -1, 64), action.CalcDoseUnitDescription)
+				printfln("   Dose: %s %s", strconv.FormatFloat(action.Dose, 'f', -1, 64), action.DoseUnitDescription)
 				printfln("   User: %s (%s)", action.UserName, action.UserID)
 				fmt.Println()
 			}
@@ -1019,7 +1019,7 @@ func (p *Process) setupCommands() {
 		printfln("MAR Action: %s", event.MarAction.MarAction)
 		printfln("Date Time: %s", event.MarAction.SavedTime.Format("2006-01-02 1504"))
 		printfln("Display Name: %s", event.MarAction.DisplayName)
-		printfln("Dose: %s %s", strconv.FormatFloat(event.MarAction.CalcMinDose, 'f', -1, 64), event.MarAction.CalcDoseUnitDescription)
+		printfln("Dose: %s %s", strconv.FormatFloat(event.MarAction.Dose, 'f', -1, 64), event.MarAction.DoseUnitDescription)
 		printfln("User: %s (%s)", event.MarAction.UserName, event.MarAction.UserID)
 		fmt.Println()
 

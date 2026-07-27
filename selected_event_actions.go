@@ -130,7 +130,7 @@ func (s *SelectedEventActions) PrintSelected() {
 			printfln("User ID: %s", item.MarAction.UserID)
 			printfln("User Name: %s", item.MarAction.UserName)
 			printfln("Display Name: %s %s", item.MarAction.DisplayName)
-			printfln("Dose: %s", strconv.FormatFloat(item.MarAction.CalcMinDose, 'f', -1, 64), item.MarAction.CalcDoseUnitDescription)
+			printfln("Dose: %s", strconv.FormatFloat(item.MarAction.Dose, 'f', -1, 64), item.MarAction.DoseUnitDescription)
 			printfln("MRN: %s", item.MarAction.MRN)
 			printfln("Patient Name: %s", item.MarAction.PtName)
 			fmt.Println()

@@ -377,7 +377,7 @@ func (c *ControlEventLog) MatchEvents(pyxisEvents []PyxisEvent, marActions []Mar
 				//	event.MarAction.SavedTime.Format("2006-01-02 1504"))
 				//-------------------------------------------------------------------//
 
-				matchStatus.CurrentAmount = subtractFloat(matchStatus.CurrentAmount, event.MarAction.CalcMinDose)
+				matchStatus.CurrentAmount = subtractFloat(matchStatus.CurrentAmount, event.MarAction.Dose)
 
 				//-------------DELETE AFTER TEST ----------------------------//
 				//fmt.Println("Updated Match Status:")
@@ -585,7 +585,7 @@ func (c *ControlEventLog) LinkEventActions(mrn, itemID string, date time.Time, i
 			}
 
 		case marAction:
-			subtractFloat(NetAmount, item.MarAction.CalcMinDose)
+			subtractFloat(NetAmount, item.MarAction.Dose)
 
 		case correctionEvent:
 			subtractFloat(NetAmount, item.CorrectionEvent.Amount)
