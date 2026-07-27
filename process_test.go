@@ -395,3 +395,48 @@ func TestLogger(t *testing.T) {
 
 	logger.Close()
 }
+
+func TestParseDose(t *testing.T) {
+	tests := []struct {
+		dispQty    float64
+		unitName   string
+		strength   string
+		parsedDose float64
+	}{
+		{
+			1.0000,
+			"tablet",
+			"0.5 MG",
+			0.5,
+		},
+		{
+			0.2500,
+			"mL",
+			"4 MG/ML",
+			1.0,
+		},
+		{
+			2.0000,
+			"mL",
+			"1 MG/ML",
+			2.0,
+		},
+		{
+			0.2500,
+			"mL",
+			"2 MG/ML",
+			0.5,
+		},
+	}
+
+	for _, test := range tests {
+		result, err := database.ParseDose(test.dispQty, test.unitName, test.strength)
+		if err != nil {
+			t.Errorf("%s", err.Error())
+		}
+
+		if result != test.parsedDose {
+			t.Errorf("Fail. Expected Result: %f. Actual: %f", test.parsedDose, result)
+		}
+	}
+}
