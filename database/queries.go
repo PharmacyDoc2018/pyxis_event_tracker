@@ -367,6 +367,8 @@ INNER JOIN dbo.dimMedUnit mu
 	ON mam.DISP_QTYUNIT_C = mu.DISP_QTYUNIT_C
 INNER JOIN dbo.fctORDER_MED o
 	ON ma.ORDER_MED_ID = o.ORDER_MED_ID
+INNER JOIN dbo.dimMedication med
+	ON o.MEDICATION_ID = med.MEDICATION_ID
 INNER JOIN dbo.dimUsers u
 	ON ma.MAR_ActionUser = u.User_ID
 INNER JOIN dbo.dimPatient pat
@@ -501,6 +503,8 @@ INNER JOIN dbo.dimMedUnit mu
 	ON mam.DISP_QTYUNIT_C = mu.DISP_QTYUNIT_C
 INNER JOIN dbo.fctORDER_MED o
 	ON ma.ORDER_MED_ID = o.ORDER_MED_ID
+INNER JOIN dbo.dimMedication med
+	ON o.MEDICATION_ID = med.MEDICATION_ID
 INNER JOIN dbo.dimUsers u
 	ON ma.MAR_ActionUser = u.User_ID
 INNER JOIN dbo.dimPatient pat
@@ -585,6 +589,8 @@ INNER JOIN dbo.dimMedUnit mu
 	ON mam.DISP_QTYUNIT_C = mu.DISP_QTYUNIT_C
 INNER JOIN dbo.fctORDER_MED o
 	ON ma.ORDER_MED_ID = o.ORDER_MED_ID
+INNER JOIN dbo.dimMedication med
+	ON o.MEDICATION_ID = med.MEDICATION_ID
 INNER JOIN dbo.dimUsers u
 	ON ma.MAR_ActionUser = u.User_ID
 INNER JOIN dbo.dimPatient pat
