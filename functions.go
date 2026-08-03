@@ -331,3 +331,18 @@ func multiplyFloat(x, y float64) float64 {
 	return float64(zmInt) / (m * m)
 
 }
+
+func printMemStats() {
+	var m runtime.MemStats
+
+	runtime.ReadMemStats(&m)
+
+	fmt.Printf("Alloc = %.2f MB\n", float64(m.Alloc)/1024/1024)
+	fmt.Printf("TotalAlloc = %.2f MB\n", float64(m.TotalAlloc)/1024/1024)
+	fmt.Printf("HeapAlloc= %.2f MB\n", float64(m.HeapAlloc)/1024/1024)
+	fmt.Printf("HeapInuse= %.2f MB\n", float64(m.HeapInuse)/1024/1024)
+	fmt.Printf("HeapIdle= %.2f MB\n", float64(m.HeapIdle)/1024/1024)
+	fmt.Printf("HeapReleased= %.2f MB\n", float64(m.HeapReleased)/1024/1024)
+	fmt.Printf("Sys = %.2f MB\n", float64(m.Sys)/1024/1024)
+	fmt.Printf("Num Gc = %d\n", m.NumGC)
+}
