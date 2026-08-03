@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -570,16 +571,53 @@ func (p *Process) loadPyxisEventLogs() error {
 		}
 
 		//-- Read data from control event log file
-		data, err := os.ReadFile(filepath.Join(p.pathToData, controlEventLogsFolder, pyxisEventLog.PyxisName+".json"))
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Error. Unable to read control event log for %s. Pyxis event log not loaded.", pyxisEventLog.PyxisName))
-			continue
-		}
+		_, err := os.Stat(filepath.Join(p.pathToData, controlEventLogsFolder, pyxisEventLog.PyxisName))
+		if err != nil { //-- data from json file
+			if os.IsNotExist(err) {
+				//-- Check for old JSON file type
+				_, err := os.Stat(filepath.Join(p.pathToData, controlEventLogsFolder, pyxisEventLog.PyxisName+".json"))
+				if err != nil {
+					if os.IsNotExist(err) {
+						//-- Data doesn't exist at all
+						p.logger.LogError(fmt.Sprintf("Error. File for %s control event log not found. Pyxis event log not loaded", pyxisEventLog.PyxisName))
+						continue
+					} else {
+						//-- json data exists, but file data not accessable
+						p.logger.LogError(fmt.Sprintf("Error. Cannot access file information for %s control event log: %s. Pyxis event log not loaded", pyxisEventLog.PyxisName, err.Error()))
+						continue
+					}
+				}
 
-		err = json.Unmarshal(data, &p.PyxisEventLogs[i].ControlEventLog)
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Error. Unable to unmarshall control event log for %s. Pyxis event log not loaded.", pyxisEventLog.PyxisName))
-			continue
+				//-- Old json file found
+				f, err := os.Open(filepath.Join(p.pathToData, controlEventLogsFolder, pyxisEventLog.PyxisName+".json"))
+				if err != nil {
+					p.logger.LogError(fmt.Sprintf("Error. Unable to open control event log for %s. Pyxis event log not loaded", pyxisEventLog.PyxisName))
+					continue
+				}
+				defer f.Close()
+
+				decoder := json.NewDecoder(f)
+				err = decoder.Decode(&p.PyxisEventLogs[i].ControlEventLog)
+				if err != nil {
+					p.logger.LogError(fmt.Sprintf("Error. Unable to decode json control event log for %s. Pyxis event log not loaded.", pyxisEventLog.PyxisName))
+					continue
+				}
+			}
+		} else { //-- data from binary file
+			//-- Load binary file
+			f, err := os.Open(filepath.Join(p.pathToData, controlEventLogsFolder, pyxisEventLog.PyxisName))
+			if err != nil {
+				p.logger.LogError(fmt.Sprintf("Error. Unable to open control event log for %s. Pyxis event log not loaded", pyxisEventLog.PyxisName))
+				continue
+			}
+			defer f.Close()
+
+			decoder := gob.NewDecoder(f)
+			err = decoder.Decode(&p.PyxisEventLogs[i].ControlEventLog)
+			if err != nil {
+				p.logger.LogError(fmt.Sprintf("Error. Unable to decode binary control event log for %s. Pyxis event log not loaded.", pyxisEventLog.PyxisName))
+				continue
+			}
 		}
 
 		//-- Link PyxisEventLog pointer in ControlEventLog

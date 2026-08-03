@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"encoding/gob"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -122,21 +122,22 @@ func (c *ControlEventLog) ValidateTrails() {
 }
 
 func (c *ControlEventLog) Save(p *Process) error {
-	//-- Marshall and write control event log data
-	data, err := json.Marshal(&c)
-	if err != nil {
-		p.logger.LogError(fmt.Sprintf("Error marshalling control event log for %s Pyxis: %s", c.pyxisEventLog.PyxisName, err.Error()))
-		return err
+	//-- If old json file exists, remove it
+	_, err := os.Stat(filepath.Join(p.pathToData, controlEventLogsFolder, c.pyxisEventLog.PyxisName+".json"))
+	if err == nil {
+		os.Remove(filepath.Join(p.pathToData, controlEventLogsFolder, c.pyxisEventLog.PyxisName+".json"))
 	}
 
-	controlFile, err := os.OpenFile(filepath.Join(p.pathToData, controlEventLogsFolder, c.pyxisEventLog.PyxisName+".json"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	//-- Marshall and write control event log data
+	controlFile, err := os.OpenFile(filepath.Join(p.pathToData, controlEventLogsFolder, c.pyxisEventLog.PyxisName), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		p.logger.LogError(fmt.Sprintf("Error opening %s control event log: %s", c.pyxisEventLog.PyxisName, err.Error()))
 		return err
 	}
 	defer controlFile.Close()
 
-	_, err = controlFile.Write(data)
+	encoder := gob.NewEncoder(controlFile)
+	err = encoder.Encode(&c)
 	if err != nil {
 		p.logger.LogError(fmt.Sprintf("Error saving %s control event log: %s", c.pyxisEventLog.PyxisName, err.Error()))
 		return err
