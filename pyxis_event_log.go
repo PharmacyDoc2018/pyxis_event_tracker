@@ -555,18 +555,22 @@ func (p *Process) loadPyxisEventLogs() error {
 	//-- Pull control event logs
 	for i, pyxisEventLog := range p.PyxisEventLogs {
 		//-- Check if control event log file exists. Add if doesn't exist
-		if _, err := os.Stat(filepath.Join(p.pathToData, controlEventLogsFolder, pyxisEventLog.PyxisName+".json")); err != nil {
+		if _, err := os.Stat(filepath.Join(p.pathToData, controlEventLogsFolder, pyxisEventLog.PyxisName)); err != nil {
 			if os.IsNotExist(err) {
-				p.PyxisEventLogs[i].ControlEventLog = &ControlEventLog{
-					Log:             []ControlEventTrail{},
-					UnmatchedEvents: []PyxisEvent{},
-					pyxisEventLog:   p.PyxisEventLogs[i],
+				if _, err := os.Stat(filepath.Join(p.pathToData, controlEventLogsFolder, pyxisEventLog.PyxisName+".json")); err != nil {
+					if os.IsNotExist(err) {
+						p.PyxisEventLogs[i].ControlEventLog = &ControlEventLog{
+							Log:             []ControlEventTrail{},
+							UnmatchedEvents: []PyxisEvent{},
+							pyxisEventLog:   p.PyxisEventLogs[i],
+						}
+						pyxisEventLogs = append(pyxisEventLogs, pyxisEventLog)
+						continue
+					} else {
+						p.logger.LogError(fmt.Sprintf("Error. Unable to read control event log for %s. Pyxis event log not loaded.", pyxisEventLog.PyxisName))
+						continue
+					}
 				}
-				pyxisEventLogs = append(pyxisEventLogs, pyxisEventLog)
-				continue
-			} else {
-				p.logger.LogError(fmt.Sprintf("Error. Unable to read control event log for %s. Pyxis event log not loaded.", pyxisEventLog.PyxisName))
-				continue
 			}
 		}
 

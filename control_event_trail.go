@@ -137,7 +137,7 @@ func (c *ControlEventLog) Save(p *Process) error {
 	defer controlFile.Close()
 
 	encoder := gob.NewEncoder(controlFile)
-	err = encoder.Encode(&c)
+	err = encoder.Encode(c)
 	if err != nil {
 		p.logger.LogError(fmt.Sprintf("Error saving %s control event log: %s", c.pyxisEventLog.PyxisName, err.Error()))
 		return err
