@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/PharmacyDoc2018/pyxis_event_tracker/cli"
+	"github.com/gocarina/gocsv"
 )
 
 func (p *Process) setupCommands() {
@@ -115,6 +116,58 @@ func (p *Process) setupCommands() {
 
 		fmt.Println(p.state.GetState())
 		return nil
+	})
+
+	p.cliConfig.AddCommand("generate pyxis events csv", func(args []cli.CommandArg) error {
+		p.logger.LogInfo("generate pyxix events csv command executed")
+
+		pyxis := ""
+		for _, arg := range args {
+			switch arg.Name {
+			case "pyxis":
+				pyxis = arg.Val
+			}
+		}
+
+		if pyxis == "" {
+			p.logger.LogError("Command failed. pyxis cannot be blank")
+			return fmt.Errorf("error. pyxis cannot be blank")
+		}
+
+		logIndex := 0
+		found := false
+		for i, log := range p.PyxisEventLogs {
+			if log.PyxisName == pyxis {
+				found = true
+				logIndex = i
+				break
+			}
+		}
+		if !found {
+			p.logger.LogError(fmt.Sprintf("Command faild. %s Pyxis not found", pyxis))
+			return fmt.Errorf("error. %s pyxis not found", pyxis)
+		}
+
+		file, err := os.OpenFile(filepath.Join(p.pathToOut, pyxis+"_EventsLog"+".csv"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed: Error opening %s_EventsLog.csv : %s", pyxis, err.Error()))
+			return err
+		}
+		defer file.Close()
+
+		err = gocsv.MarshalFile(p.PyxisEventLogs[logIndex].Log, file)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed. Unable to marshal %s Pyxis events: %s", pyxis, err.Error()))
+			return err
+		}
+
+		p.logger.LogInfo(fmt.Sprintf("Pyxis events csv for %s successfully created", pyxis))
+		printfln("pyxis events csv for %s successfully created", pyxis)
+		return nil
+
+	}, cli.CommandArg{
+		Name:     "pyxis",
+		Required: true,
 	})
 
 	//---------------- ERx - ItemID Link Commands ------------------------//
