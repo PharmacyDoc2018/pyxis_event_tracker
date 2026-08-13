@@ -134,6 +134,12 @@ func (p *Process) setupCommands() {
 			return fmt.Errorf("error. pyxis cannot be blank")
 		}
 
+		err := p.loadPyxisEventlog(pyxis)
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Command failed. Cannot load %s Pyixs event log: %s", pyxis, err.Error()))
+			return err
+		}
+
 		logIndex := 0
 		found := false
 		for i, log := range p.PyxisEventLogs {
@@ -163,6 +169,11 @@ func (p *Process) setupCommands() {
 
 		p.logger.LogInfo(fmt.Sprintf("Pyxis events csv for %s successfully created", pyxis))
 		printfln("pyxis events csv for %s successfully created", pyxis)
+
+		err = p.saveAndUnloadPyxisEventLogs()
+		if err != nil {
+			p.logger.LogError(fmt.Sprintf("Error unloading %s Pyxis event log: %s", pyxis, err.Error()))
+		}
 		return nil
 
 	}, cli.CommandArg{
