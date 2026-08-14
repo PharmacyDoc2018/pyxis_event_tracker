@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/PharmacyDoc2018/pyxis_event_tracker/database"
@@ -414,44 +413,5 @@ func (p *PyxisEventLog) Load(dataPath string) *logError {
 		return logErr
 	}
 
-	return nil
-}
-
-func (p *Process) loadPyxisEventLogs() error {
-	p.logger.LogInfo("Loading Pyxis event logs")
-
-	entries, err := os.ReadDir(filepath.Join(p.pathToData, pyxisEventLogsFolder))
-	if err != nil {
-		p.logger.LogError(fmt.Sprintf("Error accessing Pyxis event save directory: %s", err.Error()))
-		return err
-	}
-
-	pyxisEventLogs := []*PyxisEventLog{}
-	for _, entry := range entries {
-		pyxisEventLog := &PyxisEventLog{
-			PyxisName: strings.Split(entry.Name(), ".")[0],
-		}
-
-		logErr := pyxisEventLog.Load(p.pathToData)
-		if logErr != nil {
-			p.logger.LogError(logErr.logMessage)
-			fmt.Println(logErr.errMessage)
-			continue
-		}
-
-		pyxisEventLogs = append(pyxisEventLogs, pyxisEventLog)
-	}
-
-	for _, log := range pyxisEventLogs {
-		logErr := p.state.PyxisEventLogLoaded(log.PyxisName)
-		if logErr != nil {
-			p.logger.LogError(logErr.logMessage)
-		}
-	}
-
-	p.PyxisEventLogs = pyxisEventLogs
-
-	p.state.PyxisEventLogsLoadSuccessful()
-	p.logger.LogInfo("Pyxis event logs loaded")
 	return nil
 }

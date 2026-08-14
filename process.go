@@ -328,6 +328,45 @@ func (p *Process) loadPyxisEventlog(pyxis string) error {
 
 }
 
+func (p *Process) loadPyxisEventLogs() error {
+	p.logger.LogInfo("Loading Pyxis event logs")
+
+	entries, err := os.ReadDir(filepath.Join(p.pathToData, pyxisEventLogsFolder))
+	if err != nil {
+		p.logger.LogError(fmt.Sprintf("Error accessing Pyxis event save directory: %s", err.Error()))
+		return err
+	}
+
+	pyxisEventLogs := []*PyxisEventLog{}
+	for _, entry := range entries {
+		pyxisEventLog := &PyxisEventLog{
+			PyxisName: strings.Split(entry.Name(), ".")[0],
+		}
+
+		logErr := pyxisEventLog.Load(p.pathToData)
+		if logErr != nil {
+			p.logger.LogError(logErr.logMessage)
+			fmt.Println(logErr.errMessage)
+			continue
+		}
+
+		pyxisEventLogs = append(pyxisEventLogs, pyxisEventLog)
+	}
+
+	for _, log := range pyxisEventLogs {
+		logErr := p.state.PyxisEventLogLoaded(log.PyxisName)
+		if logErr != nil {
+			p.logger.LogError(logErr.logMessage)
+		}
+	}
+
+	p.PyxisEventLogs = pyxisEventLogs
+
+	p.state.PyxisEventLogsLoadSuccessful()
+	p.logger.LogInfo("Pyxis event logs loaded")
+	return nil
+}
+
 func (p *Process) saveAndUnloadPyxisEventLogs() error {
 	p.logger.LogInfo("Saving pyxis event logs")
 	for i, pyxisEventLog := range p.PyxisEventLogs {
