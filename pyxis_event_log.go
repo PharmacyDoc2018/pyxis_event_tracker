@@ -418,115 +418,38 @@ func (p *PyxisEventLog) Load(dataPath string) *logError {
 }
 
 func (p *Process) loadPyxisEventLogs() error {
-	type unmatchedLog struct {
-		Name string
-		Logs []PyxisEvent
-	}
-
-	type logSettings struct {
-		StartDateTime     time.Time
-		LastEventDateTime time.Time
-		PyxisName         string
-	}
-
 	p.logger.LogInfo("Loading Pyxis event logs")
 
-	//-- Pull logs from csv files
 	entries, err := os.ReadDir(filepath.Join(p.pathToData, pyxisEventLogsFolder))
 	if err != nil {
 		p.logger.LogError(fmt.Sprintf("Error accessing Pyxis event save directory: %s", err.Error()))
 		return err
 	}
 
-	unmatchedLogs := []unmatchedLog{}
-	for _, entry := range entries {
-		file, err := os.Open(filepath.Join(p.pathToData, pyxisEventLogsFolder, entry.Name()))
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Error opening %s: %s", file.Name(), err.Error()))
-			continue
-		}
-		defer file.Close()
-
-		log := []PyxisEvent{}
-		gocsv.UnmarshalFile(file, &log)
-		unmatchedLogs = append(unmatchedLogs, unmatchedLog{
-			Name: strings.Split(entry.Name(), ".")[0],
-			Logs: log,
-		})
-	}
-
-	//-- Pull settings from json files
-	entries, err = os.ReadDir(filepath.Join(p.pathToData, pyxisEventLogSettingsFolder))
-	if err != nil {
-		p.logger.LogError(fmt.Sprintf("Error accessing Pyxis event logs settings directory: %s", err.Error()))
-		return err
-	}
-
-	unmatchedSettings := []logSettings{}
-	for _, entry := range entries {
-		data, err := os.ReadFile(filepath.Join(p.pathToData, pyxisEventLogSettingsFolder, entry.Name()))
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Error reading %s: %s", entry.Name(), err.Error()))
-			continue
-		}
-
-		settings := logSettings{}
-		err = json.Unmarshal(data, &settings)
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Error unmarshalling data from %s: %s", entry.Name(), err.Error()))
-			continue
-		}
-
-		unmatchedSettings = append(unmatchedSettings, settings)
-	}
-
-	//-- Merge unmatchedLogs and unmatchedSettings
 	pyxisEventLogs := []*PyxisEventLog{}
-	matchedLogs := []unmatchedLog{}
-	matchedSettings := []logSettings{}
-
-	for i := range unmatchedLogs {
-		for j := range unmatchedSettings {
-			if unmatchedLogs[i].Name == unmatchedSettings[j].PyxisName {
-				pyxisEventLogs = append(pyxisEventLogs, &PyxisEventLog{
-					Log:               unmatchedLogs[i].Logs,
-					StartDateTime:     unmatchedSettings[j].StartDateTime,
-					LastEventDateTime: unmatchedSettings[j].LastEventDateTime,
-					PyxisName:         unmatchedSettings[j].PyxisName,
-				})
-
-				matchedLogs = append(matchedLogs, unmatchedLogs[i])
-				matchedSettings = append(matchedSettings, unmatchedSettings[j])
-
-				break
-			}
+	for _, entry := range entries {
+		pyxisEventLog := &PyxisEventLog{
+			PyxisName: strings.Split(entry.Name(), ".")[0],
 		}
+
+		logErr := pyxisEventLog.Load(p.pathToData)
+		if logErr != nil {
+			p.logger.LogError(logErr.logMessage)
+			fmt.Println(logErr.errMessage)
+			continue
+		}
+
+		pyxisEventLogs = append(pyxisEventLogs, pyxisEventLog)
 	}
 
-	//-- Check for unmatched logs and settings
-	if len(matchedLogs) != len(unmatchedLogs) ||
-		len(matchedSettings) != len(unmatchedSettings) {
-		p.logger.LogError("Error matching Pyxis logs and settings")
-		return fmt.Errorf("error. unable to match pyxis logs and settings on load")
+	for _, log := range pyxisEventLogs {
+		logErr := p.state.PyxisEventLogLoaded(log.PyxisName)
+		if logErr != nil {
+			p.logger.LogError(logErr.logMessage)
+		}
 	}
 
 	p.PyxisEventLogs = pyxisEventLogs
-
-	//-- Pull control event logs
-	for i, pyxisEventLog := range p.PyxisEventLogs {
-		logErr := p.PyxisEventLogs[i].controlEventLog.Load(p.pathToData, p.PyxisEventLogs[i])
-		if logErr != nil {
-			p.logger.LogError(logErr.logMessage)
-			continue
-		}
-
-		//-- Add pyxis name to list of loaded pyxis event logs in process state
-		logErr = p.state.PyxisEventLogLoaded(pyxisEventLog.PyxisName)
-		if logErr != nil {
-			p.logger.LogError(logErr.logMessage)
-			return logErr
-		}
-	}
 
 	p.state.PyxisEventLogsLoadSuccessful()
 	p.logger.LogInfo("Pyxis event logs loaded")
