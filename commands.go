@@ -758,7 +758,7 @@ func (p *Process) setupCommands() {
 
 		for _, pyxisEventLog := range p.PyxisEventLogs {
 			if pyxisEventLog.PyxisName == pyxis {
-				controlTrailSlices := pyxisEventLog.ControlEventLog.GenerateTrailSlices()
+				controlTrailSlices := pyxisEventLog.controlEventLog.GenerateTrailSlices()
 
 				report := [][]string{}
 
@@ -899,9 +899,9 @@ func (p *Process) setupCommands() {
 			return fmt.Errorf("error. %s pyxis not found", pyxis)
 		}
 
-		p.PyxisEventLogs[index].ControlEventLog.SortUnmatchedEvents()
+		p.PyxisEventLogs[index].controlEventLog.SortUnmatchedEvents()
 
-		for _, unmatchedEvent := range p.PyxisEventLogs[index].ControlEventLog.UnmatchedEvents {
+		for _, unmatchedEvent := range p.PyxisEventLogs[index].controlEventLog.UnmatchedEvents {
 			fmt.Printf("Key: %s\nType: %s\nDateTime: %s\nItemID: %s\nUserName: %s (%s)\nDisplayName: %s\nAmount: %s\nMRN: %s\nWitness: %s\n",
 				unmatchedEvent.ItemTransactionKey.String(),
 				unmatchedEvent.TransactionType,
@@ -966,7 +966,7 @@ func (p *Process) setupCommands() {
 
 		index := 0
 		found = false
-		for i, unmatchedEvent := range p.PyxisEventLogs[iLog].ControlEventLog.UnmatchedEvents {
+		for i, unmatchedEvent := range p.PyxisEventLogs[iLog].controlEventLog.UnmatchedEvents {
 			if unmatchedEvent.ItemTransactionKey.String() == id {
 				found = true
 				index = i
@@ -977,7 +977,7 @@ func (p *Process) setupCommands() {
 			return fmt.Errorf("error. unmatched event %s not found", id)
 		}
 
-		logErr := p.selectedEventActions.SelectUnmatchedEvent(p.PyxisEventLogs[iLog].ControlEventLog, index)
+		logErr := p.selectedEventActions.SelectUnmatchedEvent(p.PyxisEventLogs[iLog].controlEventLog, index)
 		if logErr != nil {
 			p.logger.LogError(fmt.Sprintf("Command failed: %s", logErr.logMessage))
 			return logErr
@@ -1353,14 +1353,14 @@ func (p *Process) setupCommands() {
 		}
 
 		found = false
-		for i := range p.PyxisEventLogs[logIndex].ControlEventLog.Log {
-			for j := range p.PyxisEventLogs[logIndex].ControlEventLog.Log[i].EventTrails {
-				for _, item := range p.PyxisEventLogs[logIndex].ControlEventLog.Log[i].EventTrails[j].Trail {
+		for i := range p.PyxisEventLogs[logIndex].controlEventLog.Log {
+			for j := range p.PyxisEventLogs[logIndex].controlEventLog.Log[i].EventTrails {
+				for _, item := range p.PyxisEventLogs[logIndex].controlEventLog.Log[i].EventTrails[j].Trail {
 					switch item.Type {
 					case pyxisEvent:
 						if item.PyxisEvent.ItemTransactionKey.String() == id {
 							found = true
-							logErr := p.selectedEventActions.RemoveTrailAndSelect(p.PyxisEventLogs[logIndex].ControlEventLog, &p.PyxisEventLogs[logIndex].ControlEventLog.Log[i], j)
+							logErr := p.selectedEventActions.RemoveTrailAndSelect(p.PyxisEventLogs[logIndex].controlEventLog, &p.PyxisEventLogs[logIndex].controlEventLog.Log[i], j)
 							if logErr != nil {
 								p.logger.LogError(fmt.Sprintf("Command failed: %s", logErr.logMessage))
 								return logErr
@@ -1583,7 +1583,7 @@ func (p *Process) setupCommands() {
 				date = timeStartDay(events[index].PyxisEvent.TxDateTime)
 			}
 
-			logErr := p.PyxisEventLogs[logIndex].ControlEventLog.LinkEventActions(mrn, itemId, date, events...)
+			logErr := p.PyxisEventLogs[logIndex].controlEventLog.LinkEventActions(mrn, itemId, date, events...)
 			if logErr != nil {
 				p.logger.LogError(fmt.Sprintf("Command failed: %s", logErr.logMessage))
 				return logErr

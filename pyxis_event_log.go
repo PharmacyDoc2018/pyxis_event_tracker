@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -37,7 +38,7 @@ type PyxisEvent struct {
 
 type PyxisEventLog struct {
 	Log               []PyxisEvent
-	ControlEventLog   *ControlEventLog
+	controlEventLog   *ControlEventLog
 	StartDateTime     time.Time
 	LastEventDateTime time.Time
 	PyxisName         string
@@ -274,7 +275,7 @@ func (p *PyxisEventLog) checkForNewControlEvents() *logResponder {
 	}
 
 	unmatchedEvents := []PyxisEvent{}
-	loggedControlEvents := p.ControlEventLog.GetLoggedControlEventKeys()
+	loggedControlEvents := p.controlEventLog.GetLoggedControlEventKeys()
 
 	for _, controlEvent := range controlEvents {
 		if _, okay := loggedControlEvents[controlEvent.ItemTransactionKey]; !okay {
@@ -288,162 +289,132 @@ func (p *PyxisEventLog) checkForNewControlEvents() *logResponder {
 		logger.AddInfo(fmt.Sprintf("%d new control events found. Adding to unmatched control log", len(unmatchedEvents)))
 	}
 
-	p.ControlEventLog.UnmatchedEvents = unmatchedEvents
+	p.controlEventLog.UnmatchedEvents = unmatchedEvents
 	return &logger
 
 }
 
-func (p *Process) saveAndUnloadPyxisEventLogs() error {
-	p.logger.LogInfo("Saving pyxis event logs")
-	for i, pyxisEventLog := range p.PyxisEventLogs {
-		//-- Save control event log as these stay loaded
-		p.logger.LogInfo(fmt.Sprintf("Saving control event log for %s", pyxisEventLog.PyxisName))
-		if err := p.PyxisEventLogs[i].ControlEventLog.Save(p); err != nil {
-			p.logger.LogError("Error. Save failed")
-			return err
-		}
-		//-- Skip to next pyxis if current is not loaded
-		if !p.state.IsLoaded(pyxisEventLog.PyxisName) {
-			continue
-		}
+func (p *PyxisEventLog) Save(dataPath string) *logError {
+	//-- If old json file exists, remove it
+	_, err := os.Stat(filepath.Join(dataPath, pyxisEventLogsFolder, p.PyxisName+".csv"))
+	if err == nil {
+		os.Remove(filepath.Join(dataPath, pyxisEventLogsFolder, p.PyxisName+".csv"))
+	}
 
-		//-- Marshal and write pyxis event log data to csv file
-		p.logger.LogInfo(fmt.Sprintf("Saving %s Pyxis event log", pyxisEventLog.PyxisName))
-		logFile, err := os.OpenFile(filepath.Join(p.pathToData, pyxisEventLogsFolder, pyxisEventLog.PyxisName+".csv"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Error opening %s Pyxis events: %s", pyxisEventLog.PyxisName, err.Error()))
-			return err
+	//-- Marshall and write pyxis event log data
+	file, err := os.OpenFile(filepath.Join(dataPath, pyxisEventLogsFolder, p.PyxisName), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return &logError{
+			logMessage: fmt.Sprintf("Error opening %s event log: %s", p.PyxisName, err.Error()),
+			errMessage: fmt.Sprintf("error opening %s event log: %s", p.PyxisName, err.Error()),
 		}
-		defer logFile.Close()
+	}
+	defer file.Close()
 
-		err = gocsv.MarshalFile(pyxisEventLog.Log, logFile)
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Error saving %s Pyxis events: %s", pyxisEventLog.PyxisName, err.Error()))
-			return err
+	encoder := gob.NewEncoder(file)
+	err = encoder.Encode(p)
+	if err != nil {
+		return &logError{
+			logMessage: fmt.Sprintf("Error saving %s pyxis event log: %s", p.PyxisName, err.Error()),
+			errMessage: fmt.Sprintf("error saving %s pyxis event log: %s", p.PyxisName, err.Error()),
 		}
-
-		//-- Marshall and write pyxis event log settings data
-		settings := struct {
-			StartDateTime     time.Time
-			LastEventDateTime time.Time
-			PyxisName         string
-		}{
-			StartDateTime:     pyxisEventLog.StartDateTime,
-			LastEventDateTime: pyxisEventLog.LastEventDateTime,
-			PyxisName:         pyxisEventLog.PyxisName,
-		}
-
-		data, err := json.Marshal(&settings)
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Error marshalling log settings for %s Pyxis: %s", pyxisEventLog.PyxisName, err.Error()))
-			return err
-		}
-
-		saveFile, err := os.OpenFile(filepath.Join(p.pathToData, pyxisEventLogSettingsFolder, pyxisEventLog.PyxisName+".json"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Error opening %s Pyxis settings: %s", pyxisEventLog.PyxisName, err.Error()))
-			return err
-		}
-		defer saveFile.Close()
-
-		_, err = saveFile.Write(data)
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Error saving %s Pyxis settings: %s", pyxisEventLog.PyxisName, err.Error()))
-			return err
-		}
-
-		//-- Marshall and write control event log data
-		data, err = json.Marshal(&pyxisEventLog.ControlEventLog)
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Error marshalling control event log for %s Pyxis: %s", pyxisEventLog.PyxisName, err.Error()))
-			return err
-		}
-
-		controlFile, err := os.OpenFile(filepath.Join(p.pathToData, controlEventLogsFolder, pyxisEventLog.PyxisName+".json"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Error opening %s control event log: %s", pyxisEventLog.PyxisName, err.Error()))
-			return err
-		}
-		defer controlFile.Close()
-
-		_, err = controlFile.Write(data)
-		if err != nil {
-			p.logger.LogError(fmt.Sprintf("Error saving %s control event log: %s", pyxisEventLog.PyxisName, err.Error()))
-			return err
-		}
-
-		//-- Remove pyxis from list of loaded event logs
-		p.logger.LogInfo(fmt.Sprintf("%s pyxis event log saved", pyxisEventLog.PyxisName))
-		pyxisEventLog.UnloadPyxisEvents()
-		p.state.PyxisEventLogUnloaded(pyxisEventLog.PyxisName)
-		p.logger.LogInfo(fmt.Sprintf("%s pyxis event log unloaded", pyxisEventLog.PyxisName))
 	}
 
 	return nil
+
 }
 
-func (p *Process) loadPyxisEventlog(pyxis string) error {
-	type logSettings struct {
-		StartDateTime     time.Time
-		LastEventDateTime time.Time
-		PyxisName         string
-	}
-
-	for i := range p.PyxisEventLogs {
-		if p.PyxisEventLogs[i].PyxisName == pyxis {
-			if len(p.PyxisEventLogs[i].Log) == 0 {
-				err := p.PyxisEventLogs[i].ControlEventLog.Save(p)
-				if err != nil {
-					return fmt.Errorf("error saving controlEventLog before re-loading event log: %s", err.Error())
+func (p *PyxisEventLog) Load(dataPath string) *logError {
+	//-- Read data from pyxis event log file
+	_, err := os.Stat(filepath.Join(dataPath, pyxisEventLogsFolder, p.PyxisName))
+	if err != nil { //-- data from json file
+		if os.IsNotExist(err) {
+			//-- Check for old csv file type
+			_, err := os.Stat(filepath.Join(dataPath, pyxisEventLogsFolder, p.PyxisName+".csv"))
+			if err != nil {
+				if os.IsNotExist(err) {
+					//-- Data doesn't exist at all
+					return &logError{
+						logMessage: fmt.Sprintf("Error. File for %s pyxis event log not found.", p.PyxisName),
+						errMessage: fmt.Sprintf("error. file for %s pyxis event log not found.", p.PyxisName),
+					}
+				} else {
+					//-- csv data exists, but file data not accessable
+					return &logError{
+						logMessage: fmt.Sprintf("Error. Cannot access file for %s pyxis event log: %s.", p.PyxisName, err.Error()),
+						errMessage: fmt.Sprintf("error. cannot access file for %s pyxis event log: %s.", p.PyxisName, err.Error()),
+					}
 				}
-				p.PyxisEventLogs = append(p.PyxisEventLogs[:i], p.PyxisEventLogs[i+1:]...)
-				break
-			} else {
-				return fmt.Errorf("error. %s pyxis already loaded", pyxis)
+			}
+
+			//-- Load data from old csv file --//
+			//-- open csv file
+			file, err := os.Open(filepath.Join(dataPath, pyxisEventLogsFolder, p.PyxisName+".csv"))
+			if err != nil {
+				return &logError{
+					logMessage: fmt.Sprintf("Error. Unable to load %s Pyxis event log: %s", p.PyxisName, err.Error()),
+					errMessage: fmt.Sprintf("error. Unable to load %s pyxis event log: %s", p.PyxisName, err.Error()),
+				}
+			}
+			defer file.Close()
+
+			//-- unmarshal csv into pyxis log
+			gocsv.UnmarshalFile(file, &p.Log)
+
+			//-- read settings json file
+			data, err := os.ReadFile(filepath.Join(dataPath, pyxisEventLogSettingsFolder, p.PyxisName+".json"))
+			if err != nil {
+				return &logError{
+					logMessage: fmt.Sprintf("Error. Unable to read %s Pyxis event log settings: %s", p.PyxisName, err.Error()),
+					errMessage: fmt.Sprintf("error. Unable to read %s pyxis event log settings: %s", p.PyxisName, err.Error()),
+				}
+			}
+
+			//-- unmarshal json data into struct
+			settings := struct {
+				StartDateTime     time.Time
+				LastEventDateTime time.Time
+			}{}
+			err = json.Unmarshal(data, &settings)
+			if err != nil {
+				return &logError{
+					logMessage: fmt.Sprintf("Error unmarshalling settings data for %s: %s", p.PyxisName, err.Error()),
+					errMessage: fmt.Sprintf("error unmarshalling settings data for %s: %s", p.PyxisName, err.Error()),
+				}
+			}
+			p.StartDateTime = settings.StartDateTime
+			p.LastEventDateTime = settings.LastEventDateTime
+
+		}
+
+		//-- Load data from binary file --//
+	} else {
+		f, err := os.Open(filepath.Join(dataPath, pyxisEventLogsFolder, p.PyxisName))
+		if err != nil {
+			return &logError{
+				logMessage: fmt.Sprintf("Error. Unable to open pyxis event log for %s.", p.PyxisName),
+				errMessage: fmt.Sprintf("error. Unable to open pyxis event log for %s.", p.PyxisName),
+			}
+		}
+		defer f.Close()
+
+		decoder := gob.NewDecoder(f)
+		err = decoder.Decode(&p)
+		if err != nil {
+			return &logError{
+				logMessage: fmt.Sprintf("Error. Unable to decode binary pyxis event log for %s.", p.PyxisName),
+				errMessage: fmt.Sprintf("error. unable to decode binary pyxis event log for %s.", p.PyxisName),
 			}
 		}
 	}
 
-	file, err := os.Open(filepath.Join(p.pathToData, pyxisEventLogsFolder, pyxis+".csv"))
-	if err != nil {
-		p.logger.LogError(fmt.Sprintf("Error. Unable to load %s Pyxis event log: %s", pyxis, err.Error()))
-		return err
-	}
-	defer file.Close()
-
-	log := []PyxisEvent{}
-	gocsv.UnmarshalFile(file, &log)
-
-	data, err := os.ReadFile(filepath.Join(p.pathToData, pyxisEventLogSettingsFolder, pyxis+".json"))
-	if err != nil {
-		p.logger.LogError(fmt.Sprintf("Error. Unable to read %s Pyxis event log settings: %s", pyxis, err.Error()))
-		return err
-	}
-
-	settings := logSettings{}
-	err = json.Unmarshal(data, &settings)
-	if err != nil {
-		p.logger.LogError(fmt.Sprintf("Error unmarshalling settings data for %s: %s", pyxis, err.Error()))
-		return err
-	}
-
-	pyxisEventLog := &PyxisEventLog{
-		Log:               log,
-		StartDateTime:     settings.StartDateTime,
-		LastEventDateTime: settings.LastEventDateTime,
-		PyxisName:         pyxis,
-	}
-
-	logErr := pyxisEventLog.ControlEventLog.Load(p.pathToData, pyxisEventLog)
+	//-- load control event log
+	logErr := p.controlEventLog.Load(dataPath, p)
 	if logErr != nil {
-		p.logger.LogError(logErr.logMessage)
 		return logErr
 	}
 
-	p.PyxisEventLogs = append(p.PyxisEventLogs, pyxisEventLog)
-	p.state.PyxisEventLogLoaded(pyxis)
 	return nil
-
 }
 
 func (p *Process) loadPyxisEventLogs() error {
@@ -543,7 +514,7 @@ func (p *Process) loadPyxisEventLogs() error {
 
 	//-- Pull control event logs
 	for i, pyxisEventLog := range p.PyxisEventLogs {
-		logErr := p.PyxisEventLogs[i].ControlEventLog.Load(p.pathToData, p.PyxisEventLogs[i])
+		logErr := p.PyxisEventLogs[i].controlEventLog.Load(p.pathToData, p.PyxisEventLogs[i])
 		if logErr != nil {
 			p.logger.LogError(logErr.logMessage)
 			continue

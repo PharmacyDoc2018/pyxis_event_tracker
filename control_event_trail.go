@@ -128,7 +128,7 @@ func (c *ControlEventLog) Load(dataPath string, pyxisEventLog *PyxisEventLog) *l
 		if os.IsNotExist(err) {
 			if _, err := os.Stat(filepath.Join(dataPath, controlEventLogsFolder, pyxisEventLog.PyxisName+".json")); err != nil {
 				if os.IsNotExist(err) {
-					pyxisEventLog.ControlEventLog = &ControlEventLog{
+					pyxisEventLog.controlEventLog = &ControlEventLog{
 						Log:             []ControlEventTrail{},
 						UnmatchedEvents: []PyxisEvent{},
 						pyxisEventLog:   pyxisEventLog,
@@ -176,7 +176,7 @@ func (c *ControlEventLog) Load(dataPath string, pyxisEventLog *PyxisEventLog) *l
 			defer f.Close()
 
 			decoder := json.NewDecoder(f)
-			err = decoder.Decode(&pyxisEventLog.ControlEventLog)
+			err = decoder.Decode(&pyxisEventLog.controlEventLog)
 			if err != nil {
 				return &logError{
 					logMessage: fmt.Sprintf("Error. Unable to decode json control event log for %s. Pyxis event log not loaded.", pyxisEventLog.PyxisName),
@@ -196,7 +196,7 @@ func (c *ControlEventLog) Load(dataPath string, pyxisEventLog *PyxisEventLog) *l
 		defer f.Close()
 
 		decoder := gob.NewDecoder(f)
-		err = decoder.Decode(&pyxisEventLog.ControlEventLog)
+		err = decoder.Decode(&pyxisEventLog.controlEventLog)
 		if err != nil {
 			return &logError{
 				logMessage: fmt.Sprintf("Error. Unable to decode binary control event log for %s. Pyxis event log not loaded.", pyxisEventLog.PyxisName),
@@ -206,7 +206,7 @@ func (c *ControlEventLog) Load(dataPath string, pyxisEventLog *PyxisEventLog) *l
 	}
 
 	//-- Link PyxisEventLog pointer in ControlEventLog
-	pyxisEventLog.ControlEventLog.pyxisEventLog = pyxisEventLog
+	pyxisEventLog.controlEventLog.pyxisEventLog = pyxisEventLog
 	return nil
 }
 

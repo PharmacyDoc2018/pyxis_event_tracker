@@ -134,7 +134,7 @@ func (c *CorrectionEventLinks) AddAndLink(p *Process, pyxisName string, date tim
 		return dateTimeOne.Before(dateTimeTwo)
 	})
 
-	logErr := p.PyxisEventLogs[logIndex].ControlEventLog.LinkEventActions(mrn, itemID, date, items...)
+	logErr := p.PyxisEventLogs[logIndex].controlEventLog.LinkEventActions(mrn, itemID, date, items...)
 	if logErr != nil {
 		//-- Remove new correction action from selected events
 		for item := range p.selectedEventActions.Map {

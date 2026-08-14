@@ -51,8 +51,8 @@ func (p *Process) startupLogsCheck() {
 		//-- Check for nil PyxisEventLog pointers in ControlEventLog.
 		p.logger.LogInfo("Checking ControlEventLog connections")
 		for i, log := range p.PyxisEventLogs {
-			if log.ControlEventLog.pyxisEventLog == nil {
-				log.ControlEventLog.pyxisEventLog = p.PyxisEventLogs[i]
+			if log.controlEventLog.pyxisEventLog == nil {
+				log.controlEventLog.pyxisEventLog = p.PyxisEventLogs[i]
 				p.logger.LogInfo(fmt.Sprintf("PyxisEventLog pointer created for %s ControlEventLog", log.PyxisName))
 			}
 		}
@@ -118,7 +118,7 @@ func (p *Process) createNewPyxisEventLog(pyxisName string, startDateTime time.Ti
 		StartDateTime: startDateTime,
 		PyxisName:     pyxisName,
 	}
-	newPyxisLog.ControlEventLog = &ControlEventLog{
+	newPyxisLog.controlEventLog = &ControlEventLog{
 		pyxisEventLog: newPyxisLog,
 	}
 
@@ -137,7 +137,7 @@ func (p *Process) matchControlEventActions() {
 		p.logger.LogInfo(fmt.Sprintf("Starting control event matching for %s", p.PyxisEventLogs[i].PyxisName))
 
 		//-- If no unmatched events, skip to next Pyxis
-		if len(p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents) == 0 {
+		if len(p.PyxisEventLogs[i].controlEventLog.UnmatchedEvents) == 0 {
 			p.logger.LogInfo(fmt.Sprintf("No unmatched control events for %s", p.PyxisEventLogs[i].PyxisName))
 			continue
 		}
@@ -153,14 +153,14 @@ func (p *Process) matchControlEventActions() {
 
 		//-- Sort unmatched control events by datetime
 		p.logger.LogInfo(fmt.Sprintf("Sorting %d unmatched control events for %s",
-			len(p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents),
+			len(p.PyxisEventLogs[i].controlEventLog.UnmatchedEvents),
 			p.PyxisEventLogs[i].PyxisName))
 
-		p.PyxisEventLogs[i].ControlEventLog.SortUnmatchedEvents()
+		p.PyxisEventLogs[i].controlEventLog.SortUnmatchedEvents()
 
 		//-- Get variables needed from sorted unmatched events for MAR action query
-		firstDay := timeStartDay(p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents[0].TxDateTime)
-		lastDay := timeEndDay(p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents[len(p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents)-1].TxDateTime)
+		firstDay := timeStartDay(p.PyxisEventLogs[i].controlEventLog.UnmatchedEvents[0].TxDateTime)
+		lastDay := timeEndDay(p.PyxisEventLogs[i].controlEventLog.UnmatchedEvents[len(p.PyxisEventLogs[i].controlEventLog.UnmatchedEvents)-1].TxDateTime)
 
 		mrns := []string{}
 		mrnMap := map[string]struct{}{}
@@ -169,7 +169,7 @@ func (p *Process) matchControlEventActions() {
 
 		medIDs := []string{}
 
-		for _, event := range p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents {
+		for _, event := range p.PyxisEventLogs[i].controlEventLog.UnmatchedEvents {
 			mrnMap[event.MRN] = struct{}{}
 			itemIDsMap[event.ItemID] = struct{}{}
 		}
@@ -193,8 +193,8 @@ func (p *Process) matchControlEventActions() {
 			deptIDs = append(deptIDs, dept.ID)
 		}
 
-		unmatchedEvents := p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents
-		p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents = []PyxisEvent{}
+		unmatchedEvents := p.PyxisEventLogs[i].controlEventLog.UnmatchedEvents
+		p.PyxisEventLogs[i].controlEventLog.UnmatchedEvents = []PyxisEvent{}
 
 		params := database.GetMarAdminActionsByPatientsDaysMedIDsParams{
 			DateStart: firstDay,
@@ -298,10 +298,10 @@ func (p *Process) matchControlEventActions() {
 						startDayTime.Format("2006-01-02"),
 						itemId))
 
-					unmatchedEvents := p.PyxisEventLogs[i].ControlEventLog.MatchEvents(eventMap[startDayTime][mrn][itemId], actionMap[startDayTime][mrn][itemId], startDayTime, mrn, itemId)
+					unmatchedEvents := p.PyxisEventLogs[i].controlEventLog.MatchEvents(eventMap[startDayTime][mrn][itemId], actionMap[startDayTime][mrn][itemId], startDayTime, mrn, itemId)
 					if len(unmatchedEvents) > 0 {
 						p.logger.LogInfo(fmt.Sprintf("Matching complete with %d unmatched events", len(unmatchedEvents)))
-						p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents = append(p.PyxisEventLogs[i].ControlEventLog.UnmatchedEvents, unmatchedEvents...)
+						p.PyxisEventLogs[i].controlEventLog.UnmatchedEvents = append(p.PyxisEventLogs[i].controlEventLog.UnmatchedEvents, unmatchedEvents...)
 					} else {
 						p.logger.LogInfo("Match complete with no unmatched events")
 					}
@@ -309,6 +309,55 @@ func (p *Process) matchControlEventActions() {
 			}
 		}
 	}
+}
+
+func (p *Process) loadPyxisEventlog(pyxis string) error {
+	pyxisEventLog := &PyxisEventLog{
+		PyxisName: pyxis,
+	}
+
+	logErr := pyxisEventLog.Load(p.pathToData)
+	if logErr != nil {
+		p.logger.LogError(logErr.logMessage)
+		return logErr
+	}
+
+	p.PyxisEventLogs = append(p.PyxisEventLogs, pyxisEventLog)
+	p.state.PyxisEventLogLoaded(pyxis)
+	return nil
+
+}
+
+func (p *Process) saveAndUnloadPyxisEventLogs() error {
+	p.logger.LogInfo("Saving pyxis event logs")
+	for i, pyxisEventLog := range p.PyxisEventLogs {
+		//-- Save control event log as these stay loaded
+		p.logger.LogInfo(fmt.Sprintf("Saving control event log for %s", pyxisEventLog.PyxisName))
+		if err := p.PyxisEventLogs[i].controlEventLog.Save(p); err != nil {
+			p.logger.LogError("Error. Save failed")
+			return err
+		}
+		//-- Skip to next pyxis if current is not loaded
+		if !p.state.IsLoaded(pyxisEventLog.PyxisName) {
+			continue
+		}
+
+		//-- Marshal and write pyxis event log data
+		p.logger.LogInfo(fmt.Sprintf("Saving %s Pyxis event log", pyxisEventLog.PyxisName))
+		logErr := p.PyxisEventLogs[i].Save(p.pathToData)
+		if logErr != nil {
+			p.logger.LogError(logErr.logMessage)
+			return logErr
+		}
+
+		//-- Remove pyxis from list of loaded event logs
+		p.logger.LogInfo(fmt.Sprintf("%s pyxis event log saved", pyxisEventLog.PyxisName))
+		pyxisEventLog.UnloadPyxisEvents()
+		p.state.PyxisEventLogUnloaded(pyxisEventLog.PyxisName)
+		p.logger.LogInfo(fmt.Sprintf("%s pyxis event log unloaded", pyxisEventLog.PyxisName))
+	}
+
+	return nil
 }
 
 func initProcess() *Process {
@@ -430,7 +479,7 @@ func initProcess() *Process {
 		//-- Validate control event trails
 		for i := range p.PyxisEventLogs {
 			p.logger.LogInfo(fmt.Sprintf("Validating control event trails for %s Pyxis", p.PyxisEventLogs[i].PyxisName))
-			p.PyxisEventLogs[i].ControlEventLog.ValidateTrails()
+			p.PyxisEventLogs[i].controlEventLog.ValidateTrails()
 		}
 
 	}
