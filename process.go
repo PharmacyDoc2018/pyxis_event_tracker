@@ -38,6 +38,7 @@ type Process struct {
 	departmentCoverage   *DepartmentCoverage
 	db                   *sql.DB
 	dbq                  *database.Queries
+	localdb              *LocalDB
 	cliConfig            *cli.Config
 	cache                *cache.Cache
 	cacheStop            chan struct{}
