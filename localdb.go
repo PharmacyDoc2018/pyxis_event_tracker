@@ -5,6 +5,15 @@ import (
 	"fmt"
 )
 
+type EventActionRef struct {
+	Type  EventType
+	Index int
+}
+
+type EventActionRefTrail struct {
+	Trail []EventActionRef
+}
+
 type LocalDB struct {
 	db *sql.DB
 }
@@ -20,45 +29,36 @@ func (p *Process) InitLocalDB() error {
 		db: db,
 	}
 
-	var exists bool
-	err = p.localdb.db.QueryRow(`
-		SELECT EXISTS (
-   	 		SELECT 1 FROM sqlite_master WHERE type='table' AND name='pyxis'
-		);
-	`).Scan(&exists)
-	if err != nil {
-		p.logger.LogError("Failed to check if pyxis table exists")
-		return err
-	}
-
-	if !exists {
-		//-- init and convert data
-		_, err = p.localdb.db.Exec(`
-			CREATE TABLE pyxis (
+	//-- Pyxis list table
+	_, err = p.localdb.db.Exec(`
+			CREATE TABLE IF NOT EXISTS pyxis (
 				id INTEGER PRIMARY KEY AUTOINCREMENT
 				name TEXT NOT NULL UNIQUE
 				start_date_time TEXT NOT NULL
 				last_event_date_time TEXT NOT NULL
 			)
 		`)
-		if err != nil {
-			p.logger.LogError("Failed to create pyxis table in local database")
-			return err
-		}
+	if err != nil {
+		p.logger.LogError("Failed to create pyxis table in local database")
+		return err
+	}
 
-		_, err = p.localdb.db.Exec(`
-			CREATE TABLE control_event_ids (
+	//-- Control event table
+	_, err = p.localdb.db.Exec(`
+			CREATE TABLE IF NOT EXISTS control_event_ids (
 				event_id TEXT PRIMARY KEY
 				pyxis_id INTEGER
+				matched INTEGER
 			)
 		`)
-		if err != nil {
-			p.logger.LogError("Failed to create control_event_ids table in local database")
-			return err
-		}
+	if err != nil {
+		p.logger.LogError("Failed to create control_event_ids table in local database")
+		return err
+	}
 
-		_, err = p.localdb.db.Exec(`
-			CREATE TABLE control_mar_actions (
+	//-- Stored MAR actions table
+	_, err = p.localdb.db.Exec(`
+			CREATE TABLE IF NOT EXISTS control_mar_actions (
 				id INTEGER PRIMARY KEY AUTOINCREMENT
 				saved_time TEXT
 				order_number TEXT
@@ -73,8 +73,21 @@ func (p *Process) InitLocalDB() error {
 				pt_name TEXT
 			)
 		`)
+	if err != nil {
+		p.logger.LogError("Failed to create control_mar_actions table in local database")
+		return err
+	}
 
-		//-- Need control_event_trails table... no idea how to implement that with the varying event actions
+	//-- Control event trails table. Data is json marshalled EventActionRefTrail
+	_, err = p.localdb.db.Exec(`
+		CREATE TABLE IF NOT EXISTS control_event_trails (
+			id INTEGER PRIMARY KEY AUTOINCREMENT
+			data BLOB NOT NULL
+		)
+	`)
+	if err != nil {
+		p.logger.LogError("Failed to create control_event_trails table in local database")
+		return err
 	}
 
 	return nil
