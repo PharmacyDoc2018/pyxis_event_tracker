@@ -18,6 +18,62 @@ type LocalDB struct {
 	db *sql.DB
 }
 
+func (l *LocalDB) GetPyxisInfo() ([]*PyxisEventLog, error) {
+	type pyxisTableQueryResponse struct {
+		id                      int
+		name                    string
+		startDateTimeString     string
+		lastEventDateTimeString string
+	}
+
+	responses := []pyxisTableQueryResponse{}
+
+	rows, err := l.db.Query(`
+		SELECT * FROM pyxis
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var res pyxisTableQueryResponse
+		if err := rows.Scan(&res); err != nil {
+			return nil, err
+		}
+		responses = append(responses, res)
+	}
+
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	logs := []*PyxisEventLog{}
+	for _, res := range responses {
+		startDateTime, err := parseDate(res.startDateTimeString)
+		if err != nil {
+			return nil, err
+		}
+
+		lastEventDateTime, err := parseDate(res.lastEventDateTimeString)
+		if err != nil {
+			return nil, err
+		}
+
+		logs = append(logs, &PyxisEventLog{
+			StartDateTime:     startDateTime,
+			LastEventDateTime: lastEventDateTime,
+			PyxisName:         res.name,
+		})
+	}
+
+	return logs, nil
+
+}
+
 func (p *Process) InitLocalDB() error {
 	db, err := sql.Open("sqlite", "app.db")
 	if err != nil {
@@ -46,7 +102,24 @@ func (p *Process) InitLocalDB() error {
 	//-- Control event table
 	_, err = p.localdb.db.Exec(`
 			CREATE TABLE IF NOT EXISTS control_event_ids (
-				event_id TEXT PRIMARY KEY
+				item_transaction_key TEXT PRIMARY KEY 
+				user_id TEXT
+				user_name TEXT
+				storage_space TEXT
+				item_id TEXT
+				med_class_code TEXT
+				med_display_name TEXT
+				transaction_type TEXT
+				tx_date_time TEXT
+				entered_quantity REAL
+				entered_uom_display_code TEXT
+				amount_referenced REAL
+				amount_referenced_units TEXT
+				beg_inventory REAL
+				end_inventory REAL
+				witness_name TEXT
+				witness_id TEXT
+				mrn TEXT
 				pyxis_id INTEGER
 				matched INTEGER
 			)

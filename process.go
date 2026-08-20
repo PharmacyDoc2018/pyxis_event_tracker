@@ -332,39 +332,12 @@ func (p *Process) loadPyxisEventlog(pyxis string) error {
 func (p *Process) loadPyxisEventLogs() error {
 	p.logger.LogInfo("Loading Pyxis event logs")
 
-	entries, err := os.ReadDir(filepath.Join(p.pathToData, pyxisEventLogsFolder))
+	pyxisEventLogs, err := p.localdb.GetPyxisInfo()
 	if err != nil {
-		p.logger.LogError(fmt.Sprintf("Error accessing Pyxis event save directory: %s", err.Error()))
 		return err
 	}
 
-	pyxisEventLogs := []*PyxisEventLog{}
-	for _, entry := range entries {
-		pyxisEventLog := &PyxisEventLog{
-			PyxisName: strings.Split(entry.Name(), ".")[0],
-		}
-
-		logErr := pyxisEventLog.Load(p.pathToData)
-		if logErr != nil {
-			p.logger.LogError(logErr.logMessage)
-			fmt.Println(logErr.errMessage)
-			continue
-		}
-
-		pyxisEventLogs = append(pyxisEventLogs, pyxisEventLog)
-	}
-
-	for _, log := range pyxisEventLogs {
-		logErr := p.state.PyxisEventLogLoaded(log.PyxisName)
-		if logErr != nil {
-			p.logger.LogError(logErr.logMessage)
-		}
-	}
-
 	p.PyxisEventLogs = pyxisEventLogs
-
-	p.state.PyxisEventLogsLoadSuccessful()
-	p.logger.LogInfo("Pyxis event logs loaded")
 	return nil
 }
 
@@ -455,11 +428,22 @@ func initProcess() *Process {
 		p.logger.LogInfo("Connection to database successful")
 	}
 
+	err = p.InitLocalDB()
+	if err != nil {
+		fmt.Println("connection to local database failed")
+		fmt.Println(err.Error())
+		p.logger.LogError(fmt.Sprintf("Connection to local database failed: %s", err.Error()))
+		p.state.LocalDbConnectionFail()
+	} else {
+		p.state.LocalDbConnectionOkay()
+	}
+
 	err = p.loadPyxisEventLogs()
 	if err != nil {
 		fmt.Printf("error loading Pyxis event logs: %s\n", err.Error())
 	} else {
 		p.state.PyxisEventLogsLoadSuccessful()
+		p.logger.LogInfo("Pyxis event logs loaded successfully")
 	}
 
 	p.erxItemIdLinks = initERxItemIdLink()
@@ -489,6 +473,7 @@ func initProcess() *Process {
 		p.state.ItemIDsLoadSuccessful()
 	}
 
+	//--------------------------- Refactored to this point: might have to skip correction events for now
 	p.correctionEventLinks = initCorrectionEvents()
 	err, lr = p.correctionEventLinks.Load(p.pathToData)
 	p.logger.Log(lr)

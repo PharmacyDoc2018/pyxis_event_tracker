@@ -22,6 +22,7 @@ type processState struct {
 	eRxItemIdLinks       bool
 	departmentCoverage   bool
 	dbConnection         bool
+	localDbConnection    bool
 	pyxisEventsLoaded    bool
 	correctionEventLinks bool
 }
@@ -61,6 +62,10 @@ func (p *processState) UpdateState() {
 	}
 
 	if !p.correctionEventLinks {
+		p.mode = SafetyMode
+	}
+
+	if !p.localDbConnection {
 		p.mode = SafetyMode
 	}
 
@@ -147,6 +152,20 @@ func (p *processState) DbConnectionSuccessful() {
 
 func (p *processState) DbConnectionFail() {
 	p.dbConnection = false
+	p.UpdateState()
+}
+
+func (p *processState) LocalDbConnectionOkay() bool {
+	return p.localDbConnection
+}
+
+func (p *processState) LocalDbConnectionSuccessful() {
+	p.localDbConnection = true
+	p.UpdateState()
+}
+
+func (p *processState) LocalDbConnectionFail() {
+	p.localDbConnection = false
 	p.UpdateState()
 }
 
